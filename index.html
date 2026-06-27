@@ -433,7 +433,10 @@ async function _saveDBImpl(opts){
           DB.todayDate=opts.todayDate!==undefined?opts.todayDate:cl.todayDate;
         }
         if(!opts.skipAttMerge){
-          DB.todayAtt=Object.assign({},cl.todayAtt||{},DB.todayAtt||{},_localAtt||{});
+          // Additive merge: cloud is the base, we add only NEW local registrations on top.
+          // This prevents one servant's save from overwriting another servant's simultaneous registration.
+          // _localAtt contains ONLY the entries registered on THIS device in this session.
+          DB.todayAtt=Object.assign({},cl.todayAtt||{},_localAtt||{});
         }
         // else: keep DB.todayAtt exactly as-is locally (we just deliberately reset/removed entries — don't let a stale cloud read bring them back)
         lsave();
