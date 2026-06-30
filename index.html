@@ -1,0 +1,2294 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>نظام الحضور</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body,input,select,button,textarea{font-family:Arial,sans-serif;direction:rtl;-webkit-tap-highlight-color:transparent}
+:root{--p:#1A237E;--pl:#E8EAF6;--g:#1B5E20;--gl:#E8F5E9;--r:#B71C1C;--rl:#FFEBEE;--o:#E65100;--ol:#FFF3E0;--bd:#CFD8DC;--bg:#F5F6FA;--tx:#212121;--txm:#546E7A}
+.hidden{display:none!important}
+/* LOGIN */
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:16px}
+.login-box{background:#fff;border-radius:16px;padding:28px 22px;width:100%;max-width:340px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.login-logo{font-size:40px;color:var(--p);margin-bottom:6px}
+.login-title{font-size:18px;font-weight:700;color:var(--p);margin-bottom:3px}
+.login-sub{font-size:12px;color:var(--txm);margin-bottom:20px}
+.lfield{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;text-align:right}
+.lfield label{font-size:12px;font-weight:700;color:var(--txm)}
+.lfield input,.lfield select{padding:10px 12px;border:1.5px solid var(--bd);border-radius:8px;font-size:14px;color:var(--tx);background:#fff;width:100%}
+.lfield input:focus,.lfield select:focus{outline:none;border-color:var(--p)}
+.lerr{background:var(--rl);color:var(--r);padding:8px 12px;border-radius:7px;font-size:12px;font-weight:700;margin-bottom:10px;display:none;align-items:center;gap:5px}
+.lrole{display:flex;gap:6px;margin-bottom:16px}
+.lrole button{flex:1;padding:9px 6px;border:1.5px solid var(--bd);border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--txm);min-height:40px}
+.lrole button.on{background:var(--p);color:#fff;border-color:var(--p)}
+/* TOPBAR */
+.topbar{background:var(--p);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.topbar-title{color:#fff;font-size:14px;font-weight:700}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.role-chip{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.chip-admin{background:#FFD54F;color:#4A2700}.chip-servant{background:#A5D6A7;color:#1B4020}.chip-viewer{background:#90CAF9;color:#0C2F5A}
+.topbar-date{color:rgba(255,255,255,.65);font-size:10px}
+.logout-btn{background:rgba(255,255,255,.15);color:#fff;border:none;padding:5px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;min-height:32px}
+.sync-indicator{display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,.75)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#69F0AE;transition:.3s;flex-shrink:0}
+.sync-dot.syncing{background:#FFD54F;animation:pulse 1s infinite}
+.sync-dot.err{background:#EF5350}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+/* TABS */
+.tabs{display:flex;background:#fff;border-bottom:2px solid var(--p);overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab{flex:1;min-width:55px;padding:10px 4px;text-align:center;font-size:10px;font-weight:700;cursor:pointer;color:var(--txm);border:none;background:transparent;border-bottom:3px solid transparent;white-space:nowrap;min-height:40px}
+.tab.on{color:var(--p);border-bottom-color:var(--p);background:var(--pl)}
+/* PAGES */
+.page{display:none;padding:12px}.page.on{display:block}
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.sc{background:#fff;border:0.5px solid var(--bd);border-radius:8px;padding:8px;text-align:center}
+.sc-n{font-size:18px;font-weight:700;margin-bottom:1px}.sc-l{font-size:9px;color:var(--txm)}
+.sc.t .sc-n{color:var(--p)}.sc.pr .sc-n{color:var(--g)}.sc.ab .sc-n{color:var(--r)}.sc.pc .sc-n{color:var(--o)}
+/* BUTTONS */
+.btn{padding:8px 12px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;min-height:36px;-webkit-appearance:none}
+.btn:active{transform:scale(.97)}
+.bg{background:var(--g);color:#fff}.br{background:var(--r);color:#fff}.bp{background:var(--p);color:#fff}
+.bo{background:var(--o);color:#fff}.bgr{background:#455A64;color:#fff}.bgo{background:#F9A825;color:#1A237E}
+/* STATUS */
+.status-bar{padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:8px;min-height:34px;display:flex;align-items:center;gap:5px}
+.status-bar.ok{background:var(--gl);color:var(--g)}.status-bar.err{background:var(--rl);color:var(--r)}
+.status-bar.info{background:var(--pl);color:var(--p)}.status-bar.warn{background:var(--ol);color:var(--o)}
+/* TABLE */
+.tbl-wrap{border-radius:8px;border:0.5px solid var(--bd);overflow:auto;max-height:360px;-webkit-overflow-scrolling:touch;width:100%;display:block}
+table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+thead th{background:var(--p);color:#fff;padding:8px 5px;text-align:center;font-size:10px;white-space:nowrap;position:sticky;top:0;z-index:1}
+tbody tr:nth-child(even){background:#F8F9FF}tbody tr:nth-child(odd){background:#fff}
+tbody tr:hover{background:var(--pl)}
+td{padding:7px 5px;text-align:center;border-bottom:0.5px solid #ECEFF1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+td.nm{text-align:right}
+.badge{display:inline-block;padding:3px 7px;border-radius:20px;font-size:10px;font-weight:700}
+.badge.p{background:var(--gl);color:var(--g)}.badge.a{background:var(--rl);color:var(--r)}
+.gbadge{display:inline-block;padding:2px 6px;border-radius:20px;font-size:9px;font-weight:700;background:#E3F2FD;color:#0C447C}
+.sbadge{display:inline-block;padding:2px 6px;border-radius:20px;font-size:9px;font-weight:700;background:#F3E5F5;color:#6A1B9A}
+/* MISC */
+.actions-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.filter-bar{display:flex;gap:5px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.filter-bar select,.filter-bar input[type=date]{padding:6px 8px;border:1.5px solid var(--bd);border-radius:6px;font-size:11px;color:var(--tx);background:#fff;min-height:34px}
+.filter-bar span{font-size:11px;color:var(--txm);font-weight:700}
+.form-card{background:#fff;border:0.5px solid var(--bd);border-radius:10px;padding:13px;margin-bottom:10px}
+.fc-title{font-size:12px;font-weight:700;color:var(--p);margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid var(--pl)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:11px;font-weight:700;color:var(--txm)}
+.field input,.field select,.field textarea{padding:8px 10px;border:1.5px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx);background:#fff;width:100%;min-height:36px}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--p)}
+.field textarea{resize:vertical;min-height:50px}
+.scan-area{background:#fff;border:2px dashed var(--bd);border-radius:9px;padding:12px;text-align:center;margin-bottom:8px}
+.servant-info{background:var(--pl);border-radius:7px;padding:8px 11px;font-size:11px;color:var(--p);font-weight:700;margin-bottom:7px}
+.hist-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:0.5px solid #ECEFF1;font-size:10px}
+.hist-row:last-child{border:none}
+.report-hdr{background:var(--p);color:#fff;border-radius:9px;padding:10px 14px;margin-bottom:10px}
+.report-hdr h3{font-size:14px;margin-bottom:2px}.report-hdr p{font-size:11px;opacity:.8}
+.rpt-tab{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+.rpt-tab button{padding:6px 13px;border:1.5px solid var(--bd);border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;background:#fff;color:var(--txm);min-height:34px}
+.rpt-tab button.on{background:var(--p);color:#fff;border-color:var(--p)}
+.present-card{background:#fff;border:1.5px solid #A5D6A7;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;cursor:pointer;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.present-av{width:38px;height:38px;border-radius:50%;background:var(--gl);color:var(--g);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.empty-attend{text-align:center;padding:28px 16px;color:var(--txm)}
+.empty-attend div{font-size:34px;margin-bottom:7px}
+.sv-card{background:#fff;border:0.5px solid var(--bd);border-radius:9px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.sv-av{width:34px;height:34px;border-radius:50%;background:#F3E5F5;color:#6A1B9A;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.add-form{background:var(--gl);border:1.5px solid #A5D6A7;border-radius:9px;padding:12px;margin-bottom:10px}
+.section-sep{border:none;border-top:1.5px dashed var(--bd);margin:12px 0}
+.pw-wrap{display:flex;align-items:center;gap:4px}.pw-wrap input{flex:1}
+.pw-show{background:none;border:none;cursor:pointer;color:var(--txm);font-size:14px;padding:0 4px}
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.on{display:flex}
+.modal-box{background:#fff;border-radius:14px;width:100%;max-width:300px;padding:20px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.2)}
+.modal-title{font-size:15px;font-weight:700;color:var(--p);margin-bottom:8px}
+.modal-msg{font-size:12px;color:var(--txm);margin-bottom:16px;white-space:pre-line;line-height:1.6}
+.modal-btns{display:flex;gap:8px}
+.member-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9997;display:none;align-items:center;justify-content:center;padding:14px;overflow-y:auto}
+.member-modal-overlay.on{display:flex}
+.member-modal-box{background:#fff;border-radius:14px;width:100%;max-width:340px;padding:18px;position:relative;max-height:90vh;overflow-y:auto}
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:rgba(26,35,126,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:#fff;font-size:14px;font-weight:700;gap:10px}
+.loading-overlay.hidden{display:none!important}
+.spinner{width:36px;height:36px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* OFFLINE BANNER */
+.offline-banner{position:fixed;top:0;left:0;right:0;background:var(--o);color:#fff;text-align:center;padding:7px 10px;font-size:12px;font-weight:700;z-index:10000;display:none}
+.offline-banner.show{display:block}
+/* ALERTS / RANKING */
+.abadge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--rl);color:var(--r)}
+.rank-medal{font-size:15px}
+.wa-btn{background:#25D366;color:#fff}
+/* RESPONSIVE */
+@media(max-width:480px){
+  .hide-sm{display:none!important}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .form-grid{grid-template-columns:1fr}
+  .sc-n{font-size:16px}
+  .actions-row{gap:4px}
+  .btn{padding:7px 9px;font-size:11px}
+  .tbl-wrap{max-height:55vh}
+  table{font-size:10px}
+  thead th{font-size:9px;padding:6px 3px}
+  td{padding:5px 3px;font-size:10px}
+  .filter-bar{flex-wrap:wrap}
+  .filter-bar select,.filter-bar input[type=date]{font-size:10px;padding:5px 6px;min-height:30px}
+  .rpt-tab button{padding:5px 8px;font-size:10px;min-height:30px}
+  .page{padding:8px}
+}
+@media print{
+  body > *:not(#_printArea){display:none!important}
+  #_printArea{display:block!important;font-family:Arial;font-size:11px;color:#111;direction:rtl}
+  #_printArea table{border-collapse:collapse;width:100%}
+  #_printArea th{background:#1A237E!important;color:#fff!important;padding:6px;text-align:right;font-size:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #_printArea td{padding:5px 6px;border:1px solid #ddd;font-size:10px}
+  #_printArea .pr{background:#f1f8e9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #_printArea .ab{background:#fff3f3!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #_printArea .g{color:#1B5E20!important;font-weight:bold}
+  #_printArea .r{color:#B71C1C!important;font-weight:bold}
+  #_printArea .b{color:#1A237E!important;font-weight:bold}
+  #_printArea .gb{background:#E3F2FD!important;color:#0C447C!important;padding:2px 5px;border-radius:5px;font-size:9px;font-weight:bold;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #_printArea .sb{background:#F3E5F5!important;color:#6A1B9A!important;padding:2px 5px;border-radius:5px;font-size:9px;font-weight:bold;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #_printArea .hdr{text-align:center;margin-bottom:8px;border-bottom:2px solid #1A237E;padding-bottom:8px}
+  #_printArea h2{color:#1A237E;font-size:15px;margin-bottom:3px}
+  #_printArea .st{display:flex;gap:12px;margin:7px 0 12px;flex-wrap:wrap}
+  #_printArea .s{background:#f5f5f5;padding:4px 10px;border-radius:5px}
+}
+</style>
+</head>
+<body>
+
+<!-- MODALS -->
+<div id="appModal" class="modal-overlay">
+  <div class="modal-box">
+    <div id="modalTitle" class="modal-title"></div>
+    <div id="modalMsg" class="modal-msg"></div>
+    <div class="modal-btns">
+      <button id="modalOk" class="btn" style="flex:1;justify-content:center"></button>
+      <button id="modalCancel" class="btn bgr" style="flex:1;justify-content:center">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div id="memberModal" class="member-modal-overlay">
+  <div id="memberModalBox" class="member-modal-box"></div>
+</div>
+
+<div class="offline-banner" id="offlineBanner">⚠ غير متصل بالإنترنت — البيانات بتُحفظ على جهازك وهتتزامن لما النت يرجع</div>
+
+<div class="loading-overlay" id="loadingOverlay" style="display:none">
+  <div class="spinner"></div>
+  <div id="loadingMsg">جاري التحميل...</div>
+</div>
+<script>document.getElementById("loadingOverlay").style.display="flex";</script>
+
+<div class="login-screen hidden" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">✝</div>
+    <div class="login-title">نظام الحضور</div>
+    <div class="login-sub">اختر نوع الدخول وادخل كلمة السر</div>
+    <div class="lerr" id="loginErr">✕ بيانات الدخول غلط</div>
+    <div class="lrole" id="loginRoleBar">
+      <button type="button" class="on" data-role="admin" onclick="selectLoginRole('admin',this)">👑 مسئول</button>
+      <button type="button" data-role="viewer" onclick="selectLoginRole('viewer',this)">👁 مراقب</button>
+      <button type="button" data-role="servant" onclick="selectLoginRole('servant',this)">🤝 خادم</button>
+    </div>
+    <div class="lfield"><label>كلمة السر</label><input type="password" id="pwInput" placeholder="ادخل كلمة السر..." onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn bp" onclick="doLogin()" style="width:100%;justify-content:center;padding:10px;font-size:13px">دخول</button>
+  </div>
+</div>
+
+<div id="mainWrap" class="hidden">
+  <div class="topbar">
+    <div class="topbar-title">✝ نظام الحضور</div>
+    <div class="topbar-right">
+      <span class="role-chip" id="roleChip"></span>
+      <span id="userLabel" style="color:rgba(255,255,255,.8);font-size:10px"></span>
+      <div class="sync-indicator"><div class="sync-dot" id="syncDot"></div><span id="syncLabel">متزامن</span></div>
+      <div class="topbar-date" id="topDate"></div>
+      <button class="logout-btn" id="myPwBtn" style="display:none;background:rgba(255,255,255,.15)" onclick="openChangeMyPw()">🔑 كلمة السر</button>
+      <button class="logout-btn" onclick="doLogout()">خروج</button>
+    </div>
+  </div>
+  <div class="tabs" id="tabsBar"></div>
+  <div id="pagesArea"></div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const SB_URL='https://foxllwhhcjuufyboqfal.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZveGxsd2hoY2p1dWZ5Ym9xZmFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1ODM2NjksImV4cCI6MjA5ODE1OTY2OX0.8ar6vGrDenSnR5oGpbPRnPUCjGBlARmhQgANZitvtMo';
+const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=minimal'};
+const SB_ROW_ID='main'; // غيّرها لو عايز صف بيانات منفصل (نسخة تجريبية مثلاً)
+
+const CHURCH_NAME='كنيسة مارجرجس عين شمس';
+const DEF={
+  users:[
+    {id:'admin',name:'المسئول',role:'admin',password:'admin123',groupId:null},
+    {id:'viewer',name:'المراقب',role:'viewer',password:'view123',groupId:null},
+    {id:'servant1',name:'خادم 1',role:'servant',password:'s1pass',groupId:'g1'},
+    {id:'servant2',name:'خادم 2',role:'servant',password:'s2pass',groupId:'g2'},
+  ],
+  members:[
+    {code:'M001',name:'مينا سامي ميخائيل',phone:'01012345678',addr:'شارع الكنيسة 5',dob:'2001-03-15',father:'القس مرقس',grade:'الثانية إعدادي',notes:'',groupId:'g1'},
+    {code:'M002',name:'مريم وليم فارس',phone:'01098765432',addr:'ش النيل 12',dob:'2002-07-22',father:'القس بولس',grade:'الثالثة إعدادي',notes:'',groupId:'g1'},
+    {code:'M003',name:'بيشوي ناجح حنا',phone:'01123456789',addr:'ش الأزهر 8',dob:'2003-01-10',father:'القس مرقس',grade:'الأولى ثانوي',notes:'',groupId:'g2'},
+    {code:'M004',name:'ريتا أشرف جرجس',phone:'01234567890',addr:'ش المدارس 3',dob:'2004-09-05',father:'القس بطرس',grade:'الثانية ثانوي',notes:'نشيطة',groupId:'g2'},
+  ],
+  todayAtt:{},todayDate:'',records:[],attendance:{},history:[]
+};
+
+const LS='att_v5';
+function lsave(){try{localStorage.setItem(LS,JSON.stringify(DB));}catch(e){}}
+function lload(){try{let s=localStorage.getItem(LS);if(s){let d=JSON.parse(s);if(d&&d.users)return d;}}catch(e){}return null;}
+function fixDB(d){
+  if(!d.records)d.records=[];
+  if(!d.todayAtt)d.todayAtt={};
+  if(!d.todayDate)d.todayDate='';
+  if(!d.history)d.history=[];
+  if(!d.attendance)d.attendance={};
+  if(!d.closedGroups)d.closedGroups={};
+  if(!d.activityLog)d.activityLog=[];
+  let tk=todayKey();
+  if(d.todayDate&&d.todayDate!==tk){
+    d.todayAtt={};d.todayDate='';d.closedGroups={};
+    // Reset session accumulator when day changes
+    _localAtt={};
+  }
+  return d;
+}
+let DB=null,currentUser=null,syncTimer=null,currentRptTab='daily';
+let _localAtt={}; // local-only att: shown immediately, merged into DB.todayAtt on sync
+
+// ----- Generic array merge (prevents data loss between devices) -----
+// base: items kept by default. overlay: items that win on shared keys, plus adds new ones.
+// Net effect: nothing in base is ever silently dropped unless overlay explicitly replaces that key.
+function mergeArr(base,overlay,keyFn){
+  let map={},order=[];
+  (base||[]).forEach(item=>{let k=keyFn(item);if(!(k in map))order.push(k);map[k]=item;});
+  (overlay||[]).forEach(item=>{let k=keyFn(item);if(!(k in map))order.push(k);map[k]=item;});
+  return order.map(k=>map[k]);
+}
+function memberKey(m){return m.code;}
+function recordKey(r){return r.code+'|'+r.date;}
+function userKey(u){return u.id;}
+
+// ----- Activity log (admin-only visibility) -----
+function logActivity(action){
+  if(!DB.activityLog)DB.activityLog=[];
+  DB.activityLog.unshift({
+    ts:Date.now()+Math.random(),
+    time:new Date().toLocaleString('ar-EG',{day:'numeric',month:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+    by:(currentUser?currentUser.name:'?')+' ('+(currentUser?(currentUser.role==='admin'?'مسئول':currentUser.role==='viewer'?'مراقب':'خادم'):'?')+')',
+    action
+  });
+  if(DB.activityLog.length>300)DB.activityLog=DB.activityLog.slice(0,300);
+}
+function logKey(l){return String(l.ts);}
+function mergeLog(base,overlay){
+  let merged=mergeArr(base,overlay,logKey);
+  merged.sort((a,b)=>b.ts-a.ts);
+  return merged.slice(0,300);
+}
+
+// ===== SUPABASE =====
+async function sbFetch(){
+  let r=await fetch(SB_URL+'/rest/v1/attendance_db?id=eq.'+SB_ROW_ID+'&select=data',{headers:SB_HDR});
+  let j=await r.json();
+  return j&&j[0]?j[0].data:null;
+}
+async function sbSave(data){
+  // Use upsert to handle both insert and update
+  let r=await fetch(SB_URL+'/rest/v1/attendance_db',{
+    method:'POST',
+    headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({id:SB_ROW_ID,data,updated_at:new Date().toISOString()})
+  });
+  return r;
+}
+// ----- Sync serialization: only ONE save/refresh/sync runs at a time -----
+// Without this, two overlapping cloud operations (e.g. a fire-and-forget save from
+// doAttend() still in flight while closeDay() starts its own save) can read/write the
+// shared DB object out of order and silently drop each other's changes.
+let _syncChain=Promise.resolve();
+function _queueSync(fn){
+  let p=_syncChain.then(fn,fn);
+  _syncChain=p.catch(()=>{});
+  return p;
+}
+async function loadDB(){return _queueSync(_loadDBImpl);}
+async function syncCloud(){return _queueSync(_syncCloudImpl);}
+async function saveDB(opts){return _queueSync(()=>_saveDBImpl(opts));}
+async function refreshDB(){return _queueSync(_refreshDBImpl);}
+
+// Apply a targeted patch ({upsert:[...], remove:[...]}) onto a FRESH base array.
+// This is the key fix: instead of trusting a device's entire local array as "the truth that
+// wins conflicts" (which breaks when that local copy is stale for data this device never
+// actively tracked — e.g. another servant's group), we trust the fresh cloud fetch for
+// EVERYTHING except the specific items THIS operation explicitly changed.
+function applyPatch(freshArr,patch,keyFn){
+  let arr=freshArr||[];
+  if(!patch)return arr;
+  if(patch.upsert&&patch.upsert.length)arr=mergeArr(arr,patch.upsert,keyFn);
+  if(patch.remove&&patch.remove.length){
+    let rm=new Set(patch.remove);
+    arr=arr.filter(x=>!rm.has(keyFn(x)));
+  }
+  return arr;
+}
+
+async function _loadDBImpl(){
+  setSyncState('syncing','جاري التحميل...');
+  let local=lload();
+  if(local){DB=fixDB(local);setSyncState('ok','محلي');}
+  else{DB=fixDB(JSON.parse(JSON.stringify(DEF)));lsave();}
+  try{
+    let remote=await sbFetch();
+    if(remote&&remote.users){
+      // Cloud has data - merge with local (protects offline-made additions not yet pushed)
+      let cl=fixDB(remote);
+      let oldM=DB.members,oldR=DB.records,oldU=DB.users,oldAtt=DB.todayAtt,oldLog=DB.activityLog;
+      DB=cl;
+      DB.members=mergeArr(oldM,cl.members,memberKey);
+      DB.records=mergeArr(oldR,cl.records,recordKey);
+      DB.users=mergeArr(oldU,cl.users,userKey);
+      DB.activityLog=mergeLog(oldLog,cl.activityLog);
+      DB.todayAtt=Object.assign({},cl.todayAtt||{},oldAtt||{},_localAtt||{});
+      lsave();
+      setSyncState('ok','متزامن');
+    } else {
+      // First time ever - push local DEF to cloud
+      await sbSave(DB);
+      setSyncState('ok','متزامن');
+    }
+  }catch(e){setSyncState('err','بدون اتصال');}
+  return true;
+}
+async function _syncCloudImpl(){
+  try{
+    let remote=await sbFetch();
+    if(remote&&remote.users){
+      let cl=fixDB(remote); // fixDB may reset _localAtt if new day
+      let oldM=DB.members,oldR=DB.records,oldU=DB.users,oldAtt=DB.todayAtt,oldLog=DB.activityLog;
+      DB=cl; // pick up other fields (closedDate, churchName, etc.) from cloud
+      // Merge: local = base (don't lose not-yet-synced local additions), remote = overlay (cloud wins on conflicts)
+      DB.members=mergeArr(oldM,cl.members,memberKey);
+      DB.records=mergeArr(oldR,cl.records,recordKey);
+      DB.users=mergeArr(oldU,cl.users,userKey);
+      DB.activityLog=mergeLog(oldLog,cl.activityLog);
+      DB.todayAtt=Object.assign({},cl.todayAtt||{},oldAtt||{},_localAtt||{});
+      lsave();renderCurrentPage();
+      setSyncState('ok','متزامن');
+    }
+  }catch(e){}
+}
+async function _saveDBImpl(opts){
+  opts=opts||{};
+  lsave();setSyncState('syncing','جاري الحفظ...');
+  let assignedMembers=null;
+  if(!opts.skipArrMerge){
+    try{
+      let remote=await sbFetch();
+      if(remote&&remote.users){
+        let cl=fixDB(remote);
+        // If this save is creating new member(s), assign their codes now based on the FRESH
+        // fetch (not a possibly-stale local cache) — this is what prevents two servants
+        // registering at nearly the same moment from ever getting the same code.
+        if(opts.pendingNewMembers&&opts.pendingNewMembers.length){
+          let base=cl.members.slice();
+          assignedMembers=opts.pendingNewMembers.map(nm=>{
+            nm.code=nextCodeFrom(base);base=base.concat([nm]);return nm;
+          });
+          opts.membersPatch=opts.membersPatch||{};
+          opts.membersPatch.upsert=(opts.membersPatch.upsert||[]).concat(assignedMembers);
+        }
+        // Trust the fresh cloud fetch as the base for EVERYTHING, then apply only
+        // THIS operation's explicit changes on top — never the device's whole stale local array.
+        DB.members=applyPatch(cl.members,opts.membersPatch,memberKey);
+        DB.records=applyPatch(cl.records,opts.recordsPatch,recordKey);
+        DB.users=applyPatch(cl.users,opts.usersPatch,userKey);
+        DB.activityLog=mergeLog(cl.activityLog,DB.activityLog);
+        // closedGroups/closedDate/todayDate are scalars a device's local copy can go stale on
+        // too — e.g. another servant closed their group moments ago and this device hasn't
+        // refreshed yet. Default: take the fresh cloud's current values (this save isn't
+        // touching them). If THIS save IS closing a day, apply only its own explicit intended
+        // change on top of the fresh base — never overwrite the whole field from a stale local copy.
+        if(opts.resetClosedGroups){
+          DB.closedGroups={};
+          DB.closedDate=opts.closedDate!==undefined?opts.closedDate:cl.closedDate;
+          DB.todayDate=opts.todayDate!==undefined?opts.todayDate:cl.todayDate;
+        } else if(opts.closedGroupsAdd){
+          DB.closedGroups=Object.assign({},cl.closedGroups||{},opts.closedGroupsAdd);
+          DB.closedDate=cl.closedDate;
+          DB.todayDate=opts.todayDate!==undefined?opts.todayDate:cl.todayDate;
+        } else {
+          DB.closedGroups=cl.closedGroups||{};
+          DB.closedDate=cl.closedDate;
+          DB.todayDate=opts.todayDate!==undefined?opts.todayDate:cl.todayDate;
+        }
+        if(!opts.skipAttMerge){
+          // Additive merge: cloud is the base, we add only NEW local registrations on top.
+          // This prevents one servant's save from overwriting another servant's simultaneous registration.
+          // _localAtt contains ONLY the entries registered on THIS device in this session.
+          DB.todayAtt=Object.assign({},cl.todayAtt||{},_localAtt||{});
+        }
+        // else: keep DB.todayAtt exactly as-is locally (we just deliberately reset/removed entries — don't let a stale cloud read bring them back)
+        lsave();
+      }
+    }catch(e){/* if pre-fetch fails, proceed with local data as-is */}
+  }
+  if(!assignedMembers&&opts.pendingNewMembers&&opts.pendingNewMembers.length){
+    // Offline fallback / fetch failed — best-effort code assignment from local data
+    let base=DB.members.slice();
+    assignedMembers=opts.pendingNewMembers.map(nm=>{
+      nm.code=nextCodeFrom(base);base=base.concat([nm]);return nm;
+    });
+    DB.members=DB.members.concat(assignedMembers);
+    lsave();
+  }
+  try{
+    let r=await sbSave(DB);
+    if(r&&(r.ok||r.status===200||r.status===201||r.status===204)){
+      setSyncState('ok','متزامن');
+    } else {
+      setSyncState('err','خطأ في الحفظ');
+    }
+  }catch(e){setSyncState('err','محلي فقط');}
+  return assignedMembers;
+}
+async function _refreshDBImpl(){
+  try{
+    let remote=await sbFetch();
+    if(remote&&remote.users){
+      let cl=fixDB(remote); // fixDB may reset _localAtt if new day
+      let oldM=DB.members,oldR=DB.records,oldU=DB.users,oldAtt=DB.todayAtt,oldLog=DB.activityLog;
+      DB=cl; // pick up other fields (closedDate, churchName, etc.) from cloud
+      DB.members=mergeArr(oldM,cl.members,memberKey);
+      DB.records=mergeArr(oldR,cl.records,recordKey);
+      DB.users=mergeArr(oldU,cl.users,userKey);
+      DB.activityLog=mergeLog(oldLog,cl.activityLog);
+      DB.todayAtt=Object.assign({},cl.todayAtt||{},oldAtt||{},_localAtt||{});
+      lsave();renderCurrentPage();
+      setSyncState('ok','متزامن');
+    }
+  }catch(e){}
+}
+function setSyncState(s,l){
+  let d=document.getElementById('syncDot'),lb=document.getElementById('syncLabel');
+  if(d)d.className='sync-dot'+(s==='ok'?'':' '+s);if(lb)lb.textContent=l;
+}
+function startAutoRefresh(){if(syncTimer)clearInterval(syncTimer);syncTimer=setInterval(refreshDB,25000);}
+function stopAutoRefresh(){if(syncTimer)clearInterval(syncTimer);}
+
+// ----- Realtime sync (instant updates instead of waiting for the periodic poll) -----
+let _sbClient=null,_rtChannel=null,_rtRefreshDebounce=null;
+function startRealtime(){
+  try{
+    if(typeof supabase==='undefined')return; // library failed to load (e.g. offline) — periodic poll still covers us
+    if(!_sbClient)_sbClient=supabase.createClient(SB_URL,SB_KEY);
+    if(_rtChannel)return;
+    _rtChannel=_sbClient.channel('attendance_db_'+SB_ROW_ID)
+      .on('postgres_changes',{event:'*',schema:'public',table:'attendance_db',filter:'id=eq.'+SB_ROW_ID},()=>{
+        // Debounce: a save can trigger this quickly after our own change; wait a beat then pull+merge
+        if(_rtRefreshDebounce)clearTimeout(_rtRefreshDebounce);
+        _rtRefreshDebounce=setTimeout(refreshDB,400);
+      })
+      .subscribe();
+  }catch(e){/* realtime not available — silently rely on periodic poll */}
+}
+function stopRealtime(){
+  try{if(_rtChannel&&_sbClient){_sbClient.removeChannel(_rtChannel);_rtChannel=null;}}catch(e){}
+}
+
+// ----- Online / Offline detection -----
+function updateOfflineBanner(){
+  let b=document.getElementById('offlineBanner');if(!b)return;
+  if(navigator.onLine===false)b.classList.add('show');else b.classList.remove('show');
+}
+window.addEventListener('offline',()=>{updateOfflineBanner();setSyncState('err','بدون اتصال');});
+window.addEventListener('online',async()=>{
+  updateOfflineBanner();setSyncState('syncing','جاري المزامنة...');
+  if(typeof syncCloud==='function')await syncCloud(); // pull+merge first (preserves any offline-made local entries)
+  if(DB)await saveDB({skipArrMerge:true}); // push the now-merged state as-is
+});
+
+// ===== HELPERS =====
+function todayKey(){let d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// IMPORTANT: every "what calendar day is this" computation in the app must go through these two
+// helpers (never new Date(str).toISOString()) — toISOString() works in UTC, and Egypt's local time
+// is ahead of UTC, so for several hours around local midnight a UTC-based date would silently be
+// the PREVIOUS day. fmtDateKey/parseDateKey always work in the device's own local time instead.
+function fmtDateKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function parseDateKey(s){let p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
+function todayStr(){return new Date().toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}
+function nowT(){return new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});}
+function initials(n){let p=n.trim().split(' ');return(p[0]?p[0][0]:'')+(p[1]?p[1][0]:'');}
+function nextCodeFrom(arr){let nums=(arr||[]).map(m=>parseInt(m.code.replace('M',''))).filter(n=>!isNaN(n));return'M'+String((nums.length?Math.max(...nums):0)+1).padStart(3,'0');}
+function nextCode(){return nextCodeFrom(DB.members);}
+function getGrades(){return[...new Set(DB.members.map(m=>m.grade).filter(Boolean))];}
+function getServants(){return DB.users.filter(u=>u.role==='servant');}
+function getGroupName(gid){let u=DB.users.find(x=>x.groupId===gid&&x.role==='servant');return u?u.name:'—';}
+function myMembers(){return currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):DB.members;}
+function getVal(id){let el=document.getElementById(id);return el?el.value:'';}
+
+// ----- Absence tracking helpers -----
+function buildRecordsMap(){
+  let map={};
+  (DB.records||[]).forEach(r=>{(map[r.code]=map[r.code]||[]).push(r);});
+  Object.keys(map).forEach(c=>map[c].sort((a,b)=>b.date.localeCompare(a.date)));
+  return map;
+}
+function getConsecutiveAbsences(code,recMap){
+  let recs=(recMap||{})[code]||[];
+  // السجلات مرتبة من الأحدث للأقدم — نعد الغيابات المتتالية من آخر سجل للخلف
+  // ونوقف فوراً لما نلاقي أول "حاضر"
+  let n=0,lastPresent='';
+  for(let i=0;i<recs.length;i++){
+    if(recs[i].status==='غائب'){
+      n++;
+    } else {
+      // أول حضور — نسجّل تاريخه ونوقف
+      lastPresent=recs[i].dateStr||recs[i].date;
+      break;
+    }
+  }
+  return{count:n,lastPresent};
+}
+function computePctInRange(code,recMap,days){
+  let recs=(recMap||{})[code]||[];
+  let set={};recs.forEach(r=>{if(!set[r.date])set[r.date]=r.status;});
+  let pr=days.filter(d=>set[d]==='حاضر').length;
+  let ab=days.filter(d=>set[d]==='غائب').length;
+  return{pr,ab,pc:days.length?Math.round(pr/days.length*100):0};
+}
+// ----- WhatsApp helper -----
+function phoneIntl(phone){
+  let p=(phone||'').replace(/[^0-9]/g,'');
+  if(!p)return'';
+  if(p.startsWith('0'))p=p.slice(1);
+  if(!p.startsWith('20'))p='20'+p;
+  return p;
+}
+function waLink(phone,msg){
+  let p=phoneIntl(phone);
+  if(!p)return'';
+  return'https://wa.me/'+p+'?text='+encodeURIComponent(msg||'');
+}
+function waBtn(phone,name,extraMsg){
+  let p=phoneIntl(phone);
+  if(!p)return'<span style="color:var(--txm);font-size:10px">لا يوجد تليفون</span>';
+  let msg=extraMsg||('سلام ونعمة يا '+name+'، وحشتنا في الاجتماع 🙏 يارب نشوفك قريب');
+  return`<a class="btn wa-btn" style="font-size:10px;padding:4px 8px;min-height:26px" target="_blank" href="${waLink(phone,msg)}" onclick="event.stopPropagation()">💬 واتساب</a>`;
+}
+// ----- Excel export helper -----
+function exportToExcel(filename,sheetName,headRow,dataRows){
+  if(typeof XLSX==='undefined'){showModal('غير متاح','تعذر تحميل مكتبة Excel — تأكد من الاتصال بالإنترنت وحاول تاني','حسناً',null);return;}
+  let ws=XLSX.utils.aoa_to_sheet([headRow,...dataRows]);
+  let wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,sheetName||'Sheet1');
+  XLSX.writeFile(wb,filename);
+}
+function renderCurrentPage(){
+  let on=document.querySelector('.page.on');if(!on)return;
+  let id=on.id.replace('page-','');
+  if(id==='attend')renderAtt();
+  else if(id==='report')renderReport();
+  else if(id==='members')renderMembers();
+  else if(id==='servants')renderServants();
+}
+
+// ===== MODAL =====
+function showModal(title,msg,okLabel,onOk,type){
+  let modal=document.getElementById('appModal');
+  let cancelBtn=document.getElementById('modalCancel');
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalMsg').textContent=msg;
+  let okBtn=document.getElementById('modalOk');
+  okBtn.textContent=okLabel||'حسناً';
+  if(onOk){
+    okBtn.className='btn '+(type==='ok'?'bg':'br');
+    cancelBtn.style.display='flex';
+    cancelBtn.onclick=()=>modal.classList.remove('on');
+    okBtn.onclick=()=>{modal.classList.remove('on');onOk();};
+  } else {
+    okBtn.className='btn bp';cancelBtn.style.display='none';
+    okBtn.onclick=()=>modal.classList.remove('on');
+  }
+  modal.classList.add('on');
+}
+function showMemberModal(m){
+  if(currentUser.role==='servant'&&m.groupId!==currentUser.groupId)return;
+  let tkey=todayKey();
+  let ta=DB.todayAtt&&DB.todayAtt[m.code];
+  let pr=!!ta;
+  let tot=(DB.records||[]).filter(r=>r.code===m.code&&r.status==='حاضر').length;
+  let hist=(DB.records||[]).filter(r=>r.code===m.code).sort((x,y)=>y.date.localeCompare(x.date)).slice(0,10);
+  let box=document.getElementById('memberModalBox');
+  box.innerHTML=`
+    <button onclick="document.getElementById('memberModal').classList.remove('on')" style="position:absolute;top:10px;left:10px;background:none;border:none;font-size:16px;cursor:pointer;color:var(--txm)">✕</button>
+    <div style="text-align:center;margin-bottom:12px;padding-top:4px">
+      <div style="width:46px;height:46px;border-radius:50%;background:var(--pl);color:var(--p);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">${initials(m.name)}</div>
+      <div style="background:var(--p);color:#fff;padding:3px 13px;border-radius:20px;font-size:12px;font-weight:700;display:inline-block;margin-bottom:4px">${m.code}</div>
+      <div style="font-size:15px;font-weight:700;color:var(--tx);margin-bottom:2px">${m.name}</div>
+      <div style="font-size:10px;color:#0C447C;background:#E3F2FD;padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:8px">${m.grade||'—'}</div>
+      <div style="display:flex;gap:6px;justify-content:center;align-items:center">
+        <span class="badge ${pr?'p':'a'}">${pr?'حاضر '+(ta?ta.time:''):'غائب اليوم'}</span>
+        <span style="font-size:11px;color:var(--p);font-weight:700">${tot} مرة</span>
+        ${waBtn(m.phone,m.name)}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:11px;margin-bottom:10px">
+      <div style="background:var(--bg);padding:6px 8px;border-radius:6px"><div style="color:var(--txm);font-size:9px">التليفون</div><div style="font-weight:700">${m.phone}</div></div>
+      <div style="background:var(--bg);padding:6px 8px;border-radius:6px"><div style="color:var(--txm);font-size:9px">أب الاعتراف</div><div style="font-weight:700">${m.father||'—'}</div></div>
+      <div style="background:var(--bg);padding:6px 8px;border-radius:6px"><div style="color:var(--txm);font-size:9px">العنوان</div><div style="font-weight:700">${m.addr||'—'}</div></div>
+      <div style="background:var(--bg);padding:6px 8px;border-radius:6px"><div style="color:var(--txm);font-size:9px">المجموعة</div><div style="font-weight:700;color:#6A1B9A">${getGroupName(m.groupId)}</div></div>
+      <div style="background:var(--bg);padding:6px 8px;border-radius:6px"><div style="color:var(--txm);font-size:9px">تاريخ الميلاد</div><div style="font-weight:700">${m.dob||'—'}</div></div>
+      <div style="background:var(--bg);padding:6px 8px;border-radius:6px"><div style="color:var(--txm);font-size:9px">ملاحظات</div><div style="font-weight:700">${m.notes||'—'}</div></div>
+    </div>
+    ${hist.length?`<div style="font-size:11px;font-weight:700;color:var(--p);margin-bottom:5px;padding-bottom:4px;border-bottom:0.5px solid var(--bd)">سجل الحضور</div>${hist.map(h=>`<div class="hist-row"><span>${h.dateStr||h.date}</span><span style="color:var(--txm)">${h.time}</span><span class="badge ${h.status==='حاضر'?'p':'a'}">${h.status}</span></div>`).join('')}`:''}
+    <button onclick="document.getElementById('memberModal').classList.remove('on')" class="btn bgr" style="width:100%;justify-content:center;margin-top:12px">إغلاق</button>`;
+  document.getElementById('memberModal').classList.add('on');
+}
+
+// ===== LOGIN =====
+let _loginRole='admin';
+function selectLoginRole(role,btn){
+  _loginRole=role;
+  document.querySelectorAll('#loginRoleBar button').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  document.getElementById('loginErr').style.display='none';
+}
+// ----- Password hashing (SHA-256 via Web Crypto, built into the browser, no library needed) -----
+async function hashPw(pw){
+  let enc=new TextEncoder().encode(pw);
+  let buf=await crypto.subtle.digest('SHA-256',enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function looksHashed(s){return typeof s==='string'&&/^[0-9a-f]{64}$/i.test(s);}
+// Compares an entered password against a stored value, whether that stored value is an
+// old plaintext password (pre-upgrade accounts) or a modern hash — works either way.
+async function pwEquals(storedPw,enteredPw){
+  if(looksHashed(storedPw))return storedPw===await hashPw(enteredPw);
+  return storedPw===enteredPw;
+}
+async function passwordTakenByOtherServant(pw,excludeId){
+  for(let u of DB.users){
+    if(u.role!=='servant')continue;
+    if(excludeId&&u.id===excludeId)continue;
+    if(await pwEquals(u.password,pw))return true;
+  }
+  return false;
+}
+async function doLogin(){
+  let pw=document.getElementById('pwInput').value;
+  let err=document.getElementById('loginErr');
+  let candidates=DB.users.filter(x=>x.role===_loginRole);
+  let u=null;
+  for(let c of candidates){
+    if(await pwEquals(c.password,pw)){u=c;break;}
+  }
+  if(!u){err.style.display='flex';document.getElementById('pwInput').value='';return;}
+  // Quietly upgrade legacy plaintext passwords to a hash the moment they're used successfully
+  if(!looksHashed(u.password)){
+    u.password=await hashPw(pw);
+    saveDB({usersPatch:{upsert:[u]}});
+  }
+  err.style.display='none';currentUser=u;
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('mainWrap').classList.remove('hidden');
+  document.getElementById('topDate').textContent=todayStr();
+  let chip=document.getElementById('roleChip');
+  chip.textContent=u.role==='admin'?'مسئول':u.role==='viewer'?'مراقب':'خادم';
+  chip.className='role-chip chip-'+(u.role==='admin'?'admin':u.role==='viewer'?'viewer':'servant');
+  document.getElementById('userLabel').textContent=u.name;
+  let pwBtn=document.getElementById('myPwBtn');if(pwBtn)pwBtn.style.display=u.role==='servant'?'':'none';
+  buildUI();startAutoRefresh();startRealtime();
+  setTimeout(()=>{
+    let si=document.getElementById('srInput');
+    if(si) si.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();doSearch();}});
+    let sb=document.getElementById('srBtn');if(sb) sb.onclick=doSearch;
+  },200);
+  try{sessionStorage.setItem('cu_id',u.id);sessionStorage.setItem('cu_pw',pw);}catch(e){}
+}
+function doLogout(){
+  showModal('خروج','هل تريد الخروج من النظام؟','نعم، خروج',()=>{
+    stopAutoRefresh();stopRealtime();currentUser=null;_localAtt={};_attInProgress=false;
+    try{sessionStorage.removeItem('cu_id');sessionStorage.removeItem('cu_pw');}catch(e){}
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('mainWrap').classList.add('hidden');
+    document.getElementById('pwInput').value='';
+    let pwBtn=document.getElementById('myPwBtn');if(pwBtn)pwBtn.style.display='none';
+    selectLoginRole('admin',document.querySelector('#loginRoleBar button[data-role="admin"]'));
+    document.getElementById('pagesArea').innerHTML='';document.getElementById('tabsBar').innerHTML='';
+  });
+}
+function openChangeMyPw(){
+  let box=document.getElementById('memberModalBox');
+  box.innerHTML=`<div style="padding:4px">
+    <div style="font-size:14px;font-weight:700;color:var(--p);margin-bottom:12px">🔑 تغيير كلمة سري</div>
+    <div class="field" style="margin-bottom:10px"><label>كلمة السر الحالية</label>
+      <div class="pw-wrap"><input type="password" id="myOldPwIn" placeholder="كلمة السر الحالية">
+      <button class="pw-show" onclick="let e=document.getElementById('myOldPwIn');e.type=e.type==='password'?'text':'password'">👁</button></div>
+    </div>
+    <div class="field" style="margin-bottom:10px"><label>كلمة السر الجديدة</label>
+      <div class="pw-wrap"><input type="password" id="myNewPwIn" placeholder="كلمة السر الجديدة">
+      <button class="pw-show" onclick="let e=document.getElementById('myNewPwIn');e.type=e.type==='password'?'text':'password'">👁</button></div>
+    </div>
+    <div id="myPwErr" style="font-size:11px;color:var(--r);margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bg" style="flex:1;justify-content:center" onclick="(async()=>{
+        let old=document.getElementById('myOldPwIn').value;
+        let nw=document.getElementById('myNewPwIn').value.trim();
+        let em=document.getElementById('myPwErr');
+        if(!(await pwEquals(currentUser.password,old))){em.textContent='كلمة السر الحالية غلط';return;}
+        if(nw.length<3){em.textContent='كلمة السر الجديدة قصيرة جداً';return;}
+        if(currentUser.role==='servant'&&await passwordTakenByOtherServant(nw,currentUser.id)){
+          em.textContent='كلمة السر دي مستخدمة بالفعل لخادم تاني، اختر كلمة سر مختلفة';return;
+        }
+        let hashed=await hashPw(nw);
+        currentUser.password=hashed;
+        await saveDB({usersPatch:{upsert:[currentUser]}});
+        try{sessionStorage.setItem('cu_pw',nw);}catch(e){}
+        document.getElementById('memberModal').classList.remove('on');
+        showModal('تم','تم تغيير كلمة السر بنجاح','حسناً',null);
+      })()">✓ حفظ</button>
+      <button class="btn bgr" style="flex:1;justify-content:center" onclick="document.getElementById('memberModal').classList.remove('on')">إلغاء</button>
+    </div>
+  </div>`;
+  document.getElementById('memberModal').classList.add('on');
+}
+
+// ===== BUILD UI =====
+function buildUI(){
+  let r=currentUser.role,tabs=[],pages=[];
+  if(r!=='viewer'){tabs.push({id:'attend',label:'الحضور'});pages.push(buildAttendPage());}
+  if(r!=='viewer'){tabs.push({id:'register',label:'تكويد'});pages.push(buildRegisterPage());}
+  tabs.push({id:'report',label:'التقارير'});pages.push(buildReportPage());
+  if(r!=='viewer'){tabs.push({id:'search',label:'بحث'});pages.push(buildSearchPage());}
+  if(r!=='viewer'){tabs.push({id:'members',label:'الأعضاء'});pages.push(buildMembersPage());}
+  if(r==='admin'){
+    tabs.push({id:'servants',label:'المستخدمين'});pages.push(buildServantsPage());
+  }
+  let tb=document.getElementById('tabsBar');tb.innerHTML='';
+  tabs.forEach((t,i)=>{let b=document.createElement('button');b.className='tab'+(i===0?' on':'');b.id='tab-'+t.id;b.textContent=t.label;b.onclick=()=>go(t.id);tb.appendChild(b);});
+  let pa=document.getElementById('pagesArea');pa.innerHTML='';
+  pages.forEach((p,i)=>{let d=document.createElement('div');d.className='page'+(i===0?' on':'');d.id='page-'+tabs[i].id;d.innerHTML=p;pa.appendChild(d);});
+  if(r!=='viewer'){renderAtt();}else{buildRptFilters('daily');renderReport();}
+  populateAllFilters();
+}
+function go(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  let pg=document.getElementById('page-'+p),tb=document.getElementById('tab-'+p);
+  if(pg)pg.classList.add('on');if(tb)tb.classList.add('on');
+  if(p==='attend')renderAtt();
+  else if(p==='report'){buildRptFilters(currentRptTab);renderReport();}
+  else if(p==='members'){renderMembers();setTimeout(()=>{let ms=document.getElementById('memSearch');if(ms){ms.oninput=renderMembers;ms.addEventListener('keydown',function(e){if(e.key==='Enter')renderMembers();});}},100);}
+  else if(p==='servants')renderServants();
+}
+
+// ===== ATTEND PAGE =====
+function buildAttendPage(){
+  return`<div id="todaySummary"></div>
+  <div class="stats" id="statsBar"></div>
+  <div class="scan-area">
+    <div style="font-size:26px;color:var(--bd);margin-bottom:4px">⊞</div>
+    <div style="font-size:11px;color:var(--txm);margin-bottom:7px">امسح الباركود أو اكتب الكود / الاسم</div>
+    <div style="display:flex;gap:6px">
+      <input type="text" id="attInput" placeholder="الكود أو الاسم..." onkeydown="if(event.key==='Enter')doAttend()" style="flex:1;padding:9px 11px;border:2px solid var(--p);border-radius:8px;font-size:14px;color:var(--tx);background:#fff">
+      <button class="btn bg" onclick="doAttend()">✓ تسجيل</button>
+    </div>
+  </div>
+  <div class="servant-info" id="servantInfo"></div>
+  <div class="status-bar info" id="attStatus">ⓘ جاهز لتسجيل الحضور</div>
+  <div class="actions-row" id="attActions"></div>
+  <div id="presentList"></div>
+  <div id="attCardWrap"></div>`;
+}
+function renderTodaySummary(){
+  let el=document.getElementById('todaySummary');if(!el)return;
+  if(currentUser.role!=='admin'){el.innerHTML='';return;}
+  let tkey=todayKey();
+  let allServants=DB.users.filter(u=>u.role==='servant');
+  let closedGroups=DB.closedGroups||{};
+  let closedCount=allServants.filter(s=>closedGroups[s.groupId]===tkey).length;
+  let isFullyClosed=DB.closedDate===tkey;
+  let todayRecords=(DB.records||[]).filter(r=>r.date===tkey);
+  let prCount=todayRecords.filter(r=>r.status==='حاضر').length;
+  let abCount=todayRecords.filter(r=>r.status==='غائب').length;
+  if(!todayRecords.length&&!closedCount&&!isFullyClosed){el.innerHTML='';return;}
+  let statusTxt=isFullyClosed?'✅ تم إغلاق اليوم بالكامل':('🔓 '+closedCount+' من '+allServants.length+' مجموعة قفلت لحد دلوقتي');
+  el.innerHTML=`<div style="background:var(--pl);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:10px">
+    <div style="font-size:11px;font-weight:700;color:var(--p);margin-bottom:4px">📋 ملخص اليوم (كل المجموعات)</div>
+    <div style="font-size:12px;color:var(--tx)">${statusTxt}${todayRecords.length?' — المسجل حتى الآن: <b style="color:var(--g)">✓ '+prCount+' حاضر</b>، <b style="color:var(--r)">✕ '+abCount+' غائب</b>':''}</div>
+  </div>`;
+}
+function renderAtt(){
+  renderTodaySummary();
+  // Servant info
+  let si=document.getElementById('servantInfo');
+  let mm=myMembers(),tkey=todayKey();
+  if(!DB.todayAtt)DB.todayAtt={};
+  if(DB.todayDate&&DB.todayDate!==tkey){DB.todayAtt={};DB.todayDate='';}
+  let pr=mm.filter(m=>(Object.assign({},DB.todayAtt||{},_localAtt||{}))[m.code]).length;
+  if(si)si.textContent=(currentUser.role==='servant'?'أنت: '+currentUser.name+' — ':'المسئول — ')+'حضر: '+pr+' من '+mm.length;
+  // Actions
+  let aa=document.getElementById('attActions');
+  if(aa&&(currentUser.role==='admin'||currentUser.role==='servant'))
+    aa.innerHTML=(currentUser.role==='admin'?`<button class="btn br" onclick="closeDay()">🔒 إغلاق اليوم</button>
+    <button class="btn bo" onclick="go('report')">📊 التقارير</button>`
+    :`<button class="btn br" onclick="closeDay()">🔒 إغلاق مجموعتي</button>`);
+  // Stats - show group stats for servant, all stats for admin
+  let allAtt=Object.assign({},DB.todayAtt||{},_localAtt||{});
+  let tot=mm.length,pc=tot?Math.round(pr/tot*100):0;
+  let sb=document.getElementById('statsBar');
+  if(currentUser.role==='admin'){
+    let totalAll=DB.members.length;
+    let presentAll=DB.members.filter(m=>allAtt[m.code]).length;
+    let abAll=totalAll-presentAll;
+    let pcAll=totalAll?Math.round(presentAll/totalAll*100):0;
+    if(sb)sb.innerHTML=`<div class="sc t"><div class="sc-n">${totalAll}</div><div class="sc-l">إجمالي الأعضاء</div></div>
+      <div class="sc pr"><div class="sc-n">${presentAll}</div><div class="sc-l">حضروا</div></div>
+      <div class="sc ab"><div class="sc-n">${abAll}</div><div class="sc-l">لم يحضروا</div></div>
+      <div class="sc pc"><div class="sc-n">${pcAll}%</div><div class="sc-l">نسبة الحضور</div></div>`;
+  } else {
+    if(sb)sb.innerHTML=`<div class="sc t"><div class="sc-n">${tot}</div><div class="sc-l">مجموعتي</div></div>
+      <div class="sc pr"><div class="sc-n">${pr}</div><div class="sc-l">حضروا</div></div>
+      <div class="sc ab"><div class="sc-n">${tot-pr}</div><div class="sc-l">لم يحضروا</div></div>
+      <div class="sc pc"><div class="sc-n">${pc}%</div><div class="sc-l">نسبة مجموعتي</div></div>`;
+  }
+  // Present list — check if this user's session is closed
+  let isClosed=false;
+  if(currentUser.role==='admin'&&DB.closedDate&&DB.closedDate===tkey) isClosed=true;
+  if(currentUser.role==='servant'&&((DB.closedGroups&&DB.closedGroups[currentUser.groupId]===tkey)||( DB.closedDate&&DB.closedDate===tkey))) isClosed=true;
+  if(isClosed){
+    let pl0=document.getElementById('presentList');
+    if(pl0)pl0.innerHTML='<div class="empty-attend"><div style="font-size:30px">✅</div><p>تم إغلاق اليوم - راجع التقارير</p></div>';
+    let sa=document.querySelector('.scan-area');if(sa)sa.style.display='none';
+    let aa=document.getElementById('attActions');
+    if(aa){
+      if(currentUser.role==='admin'){
+        aa.innerHTML=`<button class="btn bg" onclick="startNewDay()">🌅 بدء يوم جديد</button>
+        <button class="btn bo" onclick="go('report')">📊 التقارير</button>`;
+      } else {
+        aa.innerHTML=`<button class="btn bo" onclick="go('report')">📊 التقارير</button>`;
+      }
+    }
+    return;
+  }
+  let sa2=document.querySelector('.scan-area');if(sa2)sa2.style.display='';
+  let mergedAtt=Object.assign({},DB.todayAtt||{},_localAtt||{});
+  // Admin/viewer see all, servant sees only his group
+  let visiblePool=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):DB.members;
+  let presentMembers=visiblePool.filter(m=>mergedAtt[m.code]);
+  let pl=document.getElementById('presentList');if(!pl)return;
+  if(!presentMembers.length){
+    pl.innerHTML=`<div class="empty-attend"><div>📋</div><p>لم يسجل أحد بعد<br>ابدأ بإدخال الكود أو الاسم</p></div>`;
+    return;
+  }
+  // Sort by registration time (latest first = bottom, so list grows downward)
+  presentMembers.sort((a,b)=>{
+    let ta=mergedAtt[a.code]?mergedAtt[a.code].time:'';
+    let tb=mergedAtt[b.code]?mergedAtt[b.code].time:'';
+    return ta.localeCompare(tb);
+  });
+  let displayPr=presentMembers.length;
+  pl.innerHTML=`
+    <div style="font-size:11px;font-weight:700;color:var(--g);margin-bottom:7px">✓ الحاضرون (${displayPr})</div>
+    <div class="tbl-wrap" style="max-height:420px">
+      <table>
+        <thead><tr>
+          <th style="width:32px">م</th>
+          <th style="width:56px">الكود</th>
+          <th>الاسم</th>
+          <th style="width:70px">السنة</th>
+          <th style="width:70px">الخادم</th>
+        </tr></thead>
+        <tbody id="presentTbody"></tbody>
+      </table>
+    </div>`;
+  let tbody=document.getElementById('presentTbody');
+  presentMembers.forEach((m,i)=>{
+    let a=mergedAtt[m.code];
+    let tr=document.createElement('tr');
+    tr.style.cssText='cursor:pointer;background:#F1F8E9';
+    tr.onmouseover=function(){this.style.background='#C8E6C9';}
+    tr.onmouseout=function(){this.style.background='#F1F8E9';}
+    tr.onclick=()=>showMemberModal(m);
+    tr.innerHTML=`<td style="text-align:center;font-weight:700;color:var(--txm)">${i+1}</td>
+      <td style="text-align:center"><b style="color:var(--p)">${m.code}</b></td>
+      <td class="nm" style="font-weight:700;font-size:12px">${m.name}</td>
+      <td style="text-align:center"><span class="gbadge">${m.grade||'—'}</span></td>
+      <td style="text-align:center"><span class="sbadge">${getGroupName(m.groupId)}</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+function setStatus(msg,type){let s=document.getElementById('attStatus');if(s){s.className='status-bar '+type;s.textContent=msg;}}
+async function doAttend(){
+  let val=(document.getElementById('attInput')||{}).value.trim();
+  if(!val){setStatus('أدخل الكود أو الاسم','warn');return;}
+  let pool=myMembers(); // servant sees only his group, admin sees all
+  let m=pool.find(x=>x.code.toLowerCase()===val.toLowerCase()||x.name.includes(val));
+  if(!m){
+    // Check if member exists but belongs to another group
+    let anyM=DB.members.find(x=>x.code.toLowerCase()===val.toLowerCase()||x.name.includes(val));
+    if(anyM&&currentUser.role==='servant'){setStatus(val+' — ليس في مجموعتك','warn');}
+    else{setStatus('لم يتم العثور على: '+val,'err');}
+    let ai=document.getElementById('attInput');if(ai)ai.select();return;
+  }
+  let tkey=todayKey();
+  if(!DB.todayAtt)DB.todayAtt={};
+  let dayRolledOver=false;
+  if(DB.todayDate&&DB.todayDate!==tkey){DB.todayAtt={};DB.todayDate=tkey;delete DB.closedDate;DB.closedGroups={};_localAtt={};dayRolledOver=true;}
+  if(!DB.todayDate){DB.todayDate=tkey;}
+  // Check duplicate
+  if(DB.todayAtt[m.code]||_localAtt[m.code]){
+    setStatus(m.name+' — سبق تسجيل حضوره اليوم ✓','info');
+    let ai=document.getElementById('attInput');if(ai)ai.value='';
+    return;
+  }
+  let t=nowT();
+  DB.todayAtt[m.code]={time:t,byName:currentUser.name};
+  _localAtt[m.code]={time:t,byName:currentUser.name};
+  lsave();
+  renderAtt();
+  let tot=(DB.records||[]).filter(r=>r.code===m.code&&r.status==='حاضر').length+1;
+  setStatus('✓ '+m.name+' — '+t+' | '+tot+' مرة','ok');
+  let ai=document.getElementById('attInput');if(ai){ai.value='';ai.focus();}
+  saveDB(dayRolledOver?{resetClosedGroups:true,closedDate:null,todayDate:tkey}:{todayDate:tkey});
+}
+function startNewDay(){
+  showModal('بدء يوم جديد','سيتم فتح التسجيل من جديد لكل المجموعات — هل أنت متأكد؟','نعم، ابدأ',async()=>{
+    delete DB.closedDate;
+    DB.closedGroups={};
+    DB.todayAtt={};
+    DB.todayDate='';
+    _localAtt={};
+    logActivity('بدء يوم جديد (إعادة فتح التسجيل لكل المجموعات)');
+    await saveDB({skipAttMerge:true,resetClosedGroups:true,closedDate:null,todayDate:''});
+    renderAtt();
+    setStatus('تم فتح التسجيل ليوم جديد','ok');
+  },'ok');
+}
+function closeDay(){
+  let isAdmin=currentUser.role==='admin';
+  let tkey=todayKey();
+  let alreadyClosed=DB.closedGroups||{};
+  let alreadyFullyClosed=DB.closedDate===tkey;
+  // Admin's "close all" must NOT re-touch groups whose servant already closed individually today —
+  // re-processing them would wipe their correct حاضر/غائب records since their todayAtt was already cleared.
+  // If the day is ALREADY fully closed (closedDate set), the pool must be empty regardless of
+  // closedGroups' current state — closedGroups gets wiped as part of that full-close bookkeeping,
+  // so it can no longer be trusted alone to tell us "what's already done" once that happens.
+  let pool=isAdmin
+    ?(alreadyFullyClosed?[]:DB.members.filter(m=>alreadyClosed[m.groupId]!==tkey))
+    :DB.members.filter(m=>m.groupId===currentUser.groupId);
+  if(!isAdmin&&alreadyClosed[currentUser.groupId]===tkey){
+    showModal('تنبيه','مجموعتك مقفولة بالفعل لهذا اليوم','حسناً',null);return;
+  }
+  if(isAdmin&&!pool.length&&alreadyFullyClosed){
+    showModal('تنبيه','اليوم مقفول بالفعل لكل المجموعات. لو عايز تبدأ تسجيل جديد استخدم "بدء يوم جديد"','حسناً',null);return;
+  }
+  let skippedCount=isAdmin?DB.members.length-pool.length:0;
+  let lbl=isAdmin?'إغلاق اليوم للكل':'إغلاق مجموعتي';
+  let msg=isAdmin?(skippedCount?'تنبيه: '+skippedCount+' عضو في مجموعات قفلها خدامها بالفعل ولن يتأثروا. سيتم تسجيل غائبي باقي المجموعات وتصفير الكل':'سيتم تسجيل الغائبين لكل المجموعات وتصفير الكل'):'سيتم تسجيل غائبي مجموعتك وتصفير شاشتك';
+  showModal(lbl,msg,'إغلاق',async()=>{
+    if(!DB.todayAtt)DB.todayAtt={};
+    if(!DB.closedGroups)DB.closedGroups={};
+    let ds=todayStr(),ab=0;
+    let newRecordsForPool=[];
+    pool.forEach(m=>{
+      let att=DB.todayAtt[m.code]||_localAtt[m.code];
+      if(att){
+        newRecordsForPool.push({code:m.code,name:m.name,grade:m.grade,groupId:m.groupId,father:m.father||'',time:att.time||'---',status:'حاضر',date:tkey,dateStr:ds,byName:att.byName||currentUser.name});
+      } else {
+        newRecordsForPool.push({code:m.code,name:m.name,grade:m.grade,groupId:m.groupId,father:m.father||'',time:'---',status:'غائب',date:tkey,dateStr:ds,byName:'النظام'});
+        ab++;
+      }
+    });
+    let allClosedFlag=false;
+    if(isAdmin){
+      // Admin closes all (whatever groups were still open) - full reset
+      DB.todayAtt={};DB.todayDate='';DB.closedDate=tkey;DB.closedGroups={};_localAtt={};
+    } else {
+      // Servant closes own group - remove only his members from todayAtt and _localAtt
+      pool.forEach(m=>{delete DB.todayAtt[m.code];delete _localAtt[m.code];});
+      DB.closedGroups[currentUser.groupId]=tkey;
+      // If all groups are closed, do full reset
+      let allGroups=DB.users.filter(u=>u.role==='servant').map(u=>u.groupId);
+      allClosedFlag=allGroups.every(gid=>DB.closedGroups[gid]===tkey);
+      if(allClosedFlag){DB.todayAtt={};DB.todayDate='';DB.closedDate=tkey;DB.closedGroups={};_localAtt={};}
+    }
+    logActivity(lbl+' — حاضرون: '+(pool.length-ab)+' — غائبون: '+ab+(skippedCount?' — (تم تجاوز '+skippedCount+' عضو في مجموعات مقفولة بالفعل)':''));
+    let closeOpts={skipAttMerge:true,recordsPatch:{upsert:newRecordsForPool}};
+    if(isAdmin||allClosedFlag){Object.assign(closeOpts,{resetClosedGroups:true,closedDate:tkey,todayDate:''});}
+    else{Object.assign(closeOpts,{closedGroupsAdd:{[currentUser.groupId]:tkey}});}
+    await saveDB(closeOpts);renderAtt();
+    setStatus('تم الإغلاق - غائبون: '+ab,'ok');
+    showModal('تم الإغلاق','غائبون: '+ab+' عضو'+(skippedCount?' (تم تجاوز '+skippedCount+' عضو من مجموعات مقفولة بالفعل)':''),'حسناً',null,'ok');
+  });
+}
+
+// ===== REGISTER PAGE =====
+function buildRegisterPage(){
+  return`<div class="form-card">
+    <div class="fc-title">📥 استيراد من Excel / CSV</div>
+    <div style="font-size:11px;color:var(--txm);margin-bottom:8px">الأعمدة المطلوبة: الاسم، التليفون، السنة، المجموعة، العنوان، أب الاعتراف، تاريخ الميلاد، ملاحظات</div>
+    <div style="display:flex;gap:7px;align-items:center;margin-bottom:6px">
+      <input type="file" id="xlFile" accept=".xlsx,.xls,.csv" style="flex:1;padding:7px;border:1.5px solid var(--bd);border-radius:7px;font-size:11px;background:#fff">
+      <button class="btn bp" onclick="importExcel()">📥 استيراد</button>
+    </div>
+    <div id="xlStatus" style="font-size:11px;margin-bottom:4px"></div>
+    <div id="xlPreview"></div>
+    <div style="margin-top:6px"><a href="javascript:void(0)" onclick="downloadTemplate()" style="font-size:11px;color:var(--p);text-decoration:underline">⬇ تحميل نموذج CSV</a></div>
+  </div>
+  <div class="form-card">
+    <div class="fc-title">✎ تكويد عضو جديد</div>
+    <div class="form-grid">
+      <div class="field"><label>الاسم الكامل *</label><input id="rName" placeholder="الاسم الرباعي"></div>
+      <div class="field"><label>رقم التليفون *</label><input id="rPhone" placeholder="01X XXXX XXXX"></div>
+      <div class="field"><label>السنة الدراسية *</label>
+        <select id="rGrade"><option value="">-- اختر --</option>
+          <optgroup label="إعدادي"><option>الأولى إعدادي</option><option>الثانية إعدادي</option><option>الثالثة إعدادي</option></optgroup>
+          <optgroup label="ثانوي"><option>الأولى ثانوي</option><option>الثانية ثانوي</option><option>الثالثة ثانوي</option></optgroup>
+          <optgroup label="جامعة"><option>الأولى جامعة</option><option>الثانية جامعة</option><option>الثالثة جامعة</option><option>الرابعة جامعة</option><option>الخامسة جامعة</option></optgroup>
+          <option>تخرج</option><option>أخرى</option>
+        </select>
+      </div>
+      <div class="field"><label>المجموعة / الخادم *</label><select id="rGroup"><option value="">-- اختر --</option></select></div>
+      <div class="field"><label>العنوان</label><input id="rAddr" placeholder="الشارع / المنطقة"></div>
+      <div class="field"><label>تاريخ الميلاد</label><input id="rDob" type="date"></div>
+      <div class="field"><label>أب الاعتراف</label><input id="rFather" placeholder="اسم الأب الكاهن"></div>
+    </div>
+    <div class="field" style="margin-bottom:9px"><label>ملاحظات</label><textarea id="rNotes" placeholder="أي ملاحظات..."></textarea></div>
+    <div style="display:flex;gap:7px">
+      <button class="btn bg" onclick="saveMember()">💾 حفظ وإنشاء الكود</button>
+      <button class="btn bgr" onclick="clearReg()">✕ مسح</button>
+    </div>
+  </div>
+  <div id="newCardArea"></div>`;
+}
+function populateGroupSelect(){
+  let sel=document.getElementById('rGroup');if(!sel)return;
+  let cur=sel.value;sel.innerHTML='<option value="">-- اختر --</option>';
+  getServants().forEach(s=>{let o=document.createElement('option');o.value=s.groupId;o.textContent=s.name;sel.appendChild(o);});
+  sel.value=cur;
+  if(currentUser.role==='servant'){sel.value=currentUser.groupId;sel.disabled=true;}
+}
+async function saveMember(){
+  let name=document.getElementById('rName').value.trim();
+  let phone=document.getElementById('rPhone').value.trim();
+  let grade=getVal('rGrade'),groupId=getVal('rGroup');
+  if(currentUser.role==='servant')groupId=currentUser.groupId;
+  if(!name){showModal('تنبيه','أدخل الاسم الكامل','حسناً',null);return;}
+  if(!phone){showModal('تنبيه','أدخل رقم التليفون','حسناً',null);return;}
+  if(!grade){showModal('تنبيه','اختر السنة الدراسية','حسناً',null);return;}
+  if(!groupId){showModal('تنبيه','اختر المجموعة / الخادم','حسناً',null);return;}
+  // Duplicate detection: same phone, or same exact name
+  let dup=DB.members.find(x=>(x.phone&&phone&&x.phone===phone)||x.name.trim()===name);
+  if(dup){
+    showModal('⚠ عضو مشابه موجود بالفعل',
+      'في عضو مسجل بنفس '+(dup.phone===phone?'التليفون':'الاسم')+':\n'+dup.name+' — كود '+dup.code+' — '+getGroupName(dup.groupId)+'\n\nمتابعة التسجيل برغم ذلك؟',
+      'سجّل برغم ذلك',()=>actuallyCreateMember(name,phone,grade,groupId),'warn');
+    return;
+  }
+  actuallyCreateMember(name,phone,grade,groupId);
+}
+async function actuallyCreateMember(name,phone,grade,groupId){
+  let m={name,phone,grade,groupId,
+    addr:document.getElementById('rAddr').value.trim(),
+    dob:document.getElementById('rDob').value,
+    father:document.getElementById('rFather').value.trim(),
+    notes:document.getElementById('rNotes').value.trim()};
+  let assigned=await saveDB({pendingNewMembers:[m]});
+  let finalM=(assigned&&assigned[0])||m;
+  logActivity('تكويد عضو جديد: '+finalM.name+' ('+finalM.code+') — '+getGroupName(groupId));
+  populateAllFilters();clearReg();
+  let nc=document.getElementById('newCardArea');
+  if(nc)nc.innerHTML=`<div style="background:var(--gl);border:1.5px solid #A5D6A7;border-radius:10px;padding:14px;text-align:center;margin-top:10px">
+    <div style="font-size:28px;margin-bottom:6px">✓</div>
+    <div style="font-weight:700;color:var(--g);font-size:14px;margin-bottom:4px">تم التكويد بنجاح</div>
+    <div style="font-size:22px;font-weight:700;color:var(--p);background:#fff;padding:5px 18px;border-radius:20px;display:inline-block;margin-bottom:6px">${finalM.code}</div>
+    <div style="font-size:13px;font-weight:700;color:var(--tx)">${finalM.name}</div>
+    <div style="font-size:11px;color:var(--txm);margin-top:3px">${finalM.grade} · ${getGroupName(groupId)}</div>
+  </div>`;
+}
+function clearReg(){['rName','rPhone','rAddr','rDob','rFather','rNotes'].forEach(id=>{let el=document.getElementById(id);if(el)el.value='';});['rGrade','rGroup'].forEach(id=>{let el=document.getElementById(id);if(el)el.value='';});let nc=document.getElementById('newCardArea');if(nc)nc.innerHTML='';}
+
+// ===== REPORTS PAGE =====
+function buildReportPage(){
+  return`<div class="report-hdr"><h3>📊 التقارير</h3><p id="reportDate"></p></div>
+  <div class="rpt-tab">
+    <button class="on" onclick="switchRptTab('daily',this)">اليوم</button>
+    <button onclick="switchRptTab('monthly',this)">شهري</button>
+    <button onclick="switchRptTab('range',this)">فترة زمنية</button>
+    <button onclick="switchRptTab('member',this)">تقرير عضو</button>
+    <button onclick="switchRptTab('alerts',this)">⚠️ تنبيهات الغياب</button>
+    <button onclick="switchRptTab('ranking',this)">🏆 الترتيب</button>
+  </div>
+  <div id="rptFilters"></div>
+  <div id="rptAddTool"></div>
+  <div class="stats" id="rptStats"></div>
+  <div class="actions-row" id="rptActions"></div>
+  <div class="tbl-wrap"><table id="rptTable"><thead><tr id="rptHead"></tr></thead><tbody id="rptBody"></tbody></table></div>`;
+}
+
+function switchRptTab(tab,btn){
+  currentRptTab=tab;
+  document.querySelectorAll('.rpt-tab button').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  let at=document.getElementById('rptAddTool');if(at)at.innerHTML='';
+  buildRptFilters(tab);
+  renderReport();
+}
+
+function buildRptFilters(tab){
+  let fEl=document.getElementById('rptFilters');if(!fEl)return;
+  let now=new Date();
+  if(tab==='daily'){
+    fEl.innerHTML=`<div class="filter-bar">
+      <span>التاريخ:</span><input type="date" id="rptDateF" value="${todayKey()}">
+      <select id="rptStatF"><option value="">كل الحالات</option><option value="حاضر" selected>حاضرون فقط</option><option value="غائب">غائبون فقط</option></select>
+      <select id="rptGradeF"><option value="">كل السنوات</option></select>
+      <select id="rptGroupF"><option value="">كل المجموعات</option></select>
+      <button class="btn bp" style="font-size:10px;padding:5px 10px" onclick="renderReport()">عرض</button>
+    </div>`;
+    getGrades().forEach(g=>{let o=document.createElement('option');o.value=g;o.textContent=g;let s=document.getElementById('rptGradeF');if(s)s.appendChild(o);});
+    getServants().forEach(s=>{let o=document.createElement('option');o.value=s.groupId;o.textContent=s.name;let sel=document.getElementById('rptGroupF');if(sel)sel.appendChild(o);});
+    // Servant: pre-select and lock his group
+    if(currentUser.role==='servant'){
+      let gf=document.getElementById('rptGroupF');
+      if(gf){gf.value=currentUser.groupId;gf.disabled=true;}
+    }
+  } else if(tab==='monthly'){
+    fEl.innerHTML=`<div class="filter-bar">
+      <span>الشهر:</span>
+      <select id="rptMonth">${[...Array(12)].map((_,i)=>`<option value="${i+1}"${i+1===now.getMonth()+1?' selected':''}>${new Date(2000,i,1).toLocaleDateString('ar-EG',{month:'long'})}</option>`).join('')}</select>
+      <select id="rptYear">${[now.getFullYear()-1,now.getFullYear()].map(y=>`<option value="${y}"${y===now.getFullYear()?' selected':''}>${y}</option>`).join('')}</select>
+      <select id="rptGroupFM"><option value="">كل المجموعات</option></select>
+      <button class="btn bp" style="font-size:10px;padding:5px 10px" onclick="renderReport()">عرض</button>
+    </div>`;
+    getServants().forEach(s=>{let o=document.createElement('option');o.value=s.groupId;o.textContent=s.name;let sel=document.getElementById('rptGroupFM');if(sel)sel.appendChild(o);});
+  } else if(tab==='range'){
+    let firstDay=fmtDateKey(new Date(now.getFullYear(),now.getMonth(),1));
+    fEl.innerHTML=`<div class="filter-bar">
+      <span>من:</span><input type="date" id="rptFrom" value="${firstDay}">
+      <span>إلى:</span><input type="date" id="rptTo" value="${todayKey()}">
+      <button class="btn bp" style="font-size:10px;padding:5px 10px" onclick="renderReport()">عرض</button>
+    </div>`;
+  } else if(tab==='member'){
+    fEl.innerHTML=`<div class="filter-bar">
+      <span>العضو:</span>
+      <select id="rptMemberSel" onchange="renderReport()"><option value="">-- اختر عضو --</option>${(currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):DB.members).map(m=>`<option value="${m.code}">${m.name} (${m.code})</option>`).join('')}</select>
+      <button class="btn bp" style="font-size:10px;padding:5px 10px" onclick="renderReport()">عرض</button>
+    </div>`;
+  } else if(tab==='alerts'){
+    fEl.innerHTML=`<div class="filter-bar">
+      <span>غياب متتالي ≥</span><input type="number" id="rptAbsThresh" value="3" min="1" style="width:55px;padding:6px;border:1.5px solid var(--bd);border-radius:6px">
+      <select id="rptGroupFA"><option value="">كل المجموعات</option></select>
+      <button class="btn bp" style="font-size:10px;padding:5px 10px" onclick="renderReport()">عرض</button>
+    </div>`;
+    getServants().forEach(s=>{let o=document.createElement('option');o.value=s.groupId;o.textContent=s.name;let sel=document.getElementById('rptGroupFA');if(sel)sel.appendChild(o);});
+    if(currentUser.role==='servant'){let gf=document.getElementById('rptGroupFA');if(gf){gf.value=currentUser.groupId;gf.disabled=true;}}
+  } else if(tab==='ranking'){
+    let firstDay2=fmtDateKey(new Date(now.getFullYear(),now.getMonth(),1));
+    fEl.innerHTML=`<div class="filter-bar">
+      <span>من:</span><input type="date" id="rptRkFrom" value="${firstDay2}">
+      <span>إلى:</span><input type="date" id="rptRkTo" value="${todayKey()}">
+      <select id="rptGroupFR"><option value="">كل المجموعات</option></select>
+      <button class="btn bp" style="font-size:10px;padding:5px 10px" onclick="renderReport()">عرض</button>
+    </div>`;
+    getServants().forEach(s=>{let o=document.createElement('option');o.value=s.groupId;o.textContent=s.name;let sel=document.getElementById('rptGroupFR');if(sel)sel.appendChild(o);});
+    if(currentUser.role==='servant'){let gf=document.getElementById('rptGroupFR');if(gf){gf.value=currentUser.groupId;gf.disabled=true;}}
+  }
+}
+
+function renderReport(){
+  let rd=document.getElementById('reportDate');if(rd)rd.textContent='تاريخ: '+todayStr();
+  if(currentRptTab==='daily')renderDailyRpt();
+  else if(currentRptTab==='monthly')renderMonthlyRpt();
+  else if(currentRptTab==='range')renderRangeRpt();
+  else if(currentRptTab==='member')renderMemberRpt();
+  else if(currentRptTab==='alerts')renderAlertsRpt();
+  else if(currentRptTab==='ranking')renderRankingRpt();
+}
+
+function setRptHead(html){let rh=document.getElementById('rptHead');if(rh)rh.innerHTML=html;}
+function setRptStats(tot,pr,ab,pc_label){
+  let rs=document.getElementById('rptStats');
+  if(!rs)return;
+  rs.innerHTML=`<div class="sc t"><div class="sc-n">${tot}</div><div class="sc-l">إجمالي</div></div>
+    <div class="sc pr"><div class="sc-n">${pr}</div><div class="sc-l">حاضرون</div></div>
+    <div class="sc ab"><div class="sc-n">${ab}</div><div class="sc-l">غائبون</div></div>
+    <div class="sc pc"><div class="sc-n">${pc_label}</div><div class="sc-l">نسبة الحضور</div></div>`;
+}
+function setRptActions(html){let ra=document.getElementById('rptActions');if(ra)ra.innerHTML=html;}
+function setRptBody(rows_fn){let b=document.getElementById('rptBody');if(!b)return b;b.innerHTML='';return b;}
+
+function renderDailyAddTool(tkey,rpool,src){
+  let at=document.getElementById('rptAddTool');if(!at)return;
+  if(currentUser.role!=='admin'){at.innerHTML='';return;}
+  let withRecord=new Set(src.filter(r=>r.date===tkey).map(r=>r.code));
+  let isToday=(tkey===todayKey());
+  if(isToday&&DB.todayAtt)Object.keys(DB.todayAtt).forEach(c=>withRecord.add(c));
+  let missing=rpool.filter(m=>!withRecord.has(m.code));
+  if(!missing.length){at.innerHTML='';return;}
+  at.innerHTML=`<div style="background:var(--pl);border-radius:8px;padding:8px 10px;margin-bottom:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:11px;font-weight:700;color:var(--p)">➕ نسي خادمه يسجله؟</span>
+    <select id="dailyAddSel" style="flex:1;min-width:140px;padding:6px;border:1.5px solid var(--bd);border-radius:6px;font-size:11px">
+      <option value="">-- اختر عضو --</option>
+      ${missing.map(m=>`<option value="${m.code}">${m.name} (${m.code}) — ${getGroupName(m.groupId)}</option>`).join('')}
+    </select>
+    <button class="btn bp" style="font-size:10px;padding:5px 9px" onclick="let v=getVal('dailyAddSel');if(v)editAttRecord(v,'${tkey}')">إضافة سجل</button>
+  </div>`;
+}
+function renderDailyRpt(){
+  let tkey=getVal('rptDateF')||todayKey();
+  let sfv=getVal('rptStatF'),gfv=getVal('rptGradeF'),grpfv=getVal('rptGroupF');
+  let src=DB.records||[];
+  let isToday=(tkey===todayKey());
+  // Filter pool by role first
+  let rpool=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):DB.members;
+  // Check if this date has records for THIS pool only
+  let poolCodes=rpool.map(m=>m.code);
+  let hasRecords=src.some(r=>r.date===tkey&&poolCodes.includes(r.code));
+  let hasAttToday=isToday&&DB.todayAtt&&Object.keys(DB.todayAtt).some(code=>poolCodes.includes(code));
+  let b2=document.getElementById('rptBody');
+  if(!hasRecords&&!hasAttToday){
+    setRptStats(0,0,0,'0%');
+    setRptActions('');
+    setRptHead('<th>م</th><th>الكود</th><th>الاسم</th><th>السنة</th><th>الوقت</th><th>الحالة</th><th>مرات</th><th>المجموعة</th><th>أب الاعتراف</th>');
+    if(b2)b2.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--txm)">لا توجد سجلات لهذا اليوم</td></tr>';
+    renderDailyAddTool(tkey,rpool,src);
+    return;
+  }
+  let allRows=rpool.map(m=>{
+    let rec=src.find(r=>r.code===m.code&&r.date===tkey);
+    let inAtt=isToday&&DB.todayAtt&&DB.todayAtt[m.code];
+    // Only show member if has record OR is in todayAtt
+    if(!rec&&!inAtt)return null;
+    let pr=rec?rec.status==='حاضر':(inAtt?true:false);
+    let time=rec?rec.time:(inAtt?DB.todayAtt[m.code].time:'---');
+    let tot=src.filter(r=>r.code===m.code&&r.status==='حاضر').length;
+    return{...m,pr,time,tot};
+  }).filter(Boolean);
+  let rows=allRows.filter(r=>{
+    if(sfv==='حاضر'&&!r.pr)return false;
+    if(sfv==='غائب'&&r.pr)return false;
+    if(gfv&&r.grade!==gfv)return false;
+    if(grpfv&&r.groupId!==grpfv)return false;
+    return true;
+  });
+  let allPr=allRows.filter(r=>r.pr).length,allTot=allRows.length;
+  let pc=allTot?Math.round(allPr/allTot*100):0;
+  setRptStats(allTot,allPr,allTot-allPr,pc+'%');
+  renderDailyAddTool(tkey,rpool,src);
+  setRptActions(`<button class="btn bgo" onclick="printDailyRpt('all')">🖨 طباعة الكل</button>
+    <button class="btn bg" onclick="printDailyRpt('حاضر')">✓ الحاضرون</button>
+    <button class="btn br" onclick="printDailyRpt('غائب')">✕ الغائبون</button>
+    <button class="btn bp" onclick="exportDailyExcel()">📊 Excel</button>`);
+  let isAdmin=currentUser.role==='admin';
+  setRptHead('<th>م</th><th>الكود</th><th>الاسم</th><th class="hide-sm">السنة</th><th>الوقت</th><th>الحالة</th><th class="hide-sm">مرات</th><th class="hide-sm">المجموعة</th><th class="hide-sm">أب الاعتراف</th>'+(isAdmin?'<th class="hide-sm">إجراء</th>':''));
+  let b=document.getElementById('rptBody');if(!b)return;b.innerHTML='';
+  if(!rows.length){b.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--txm)">لا توجد بيانات لهذا الفلتر</td></tr>';return;}
+  rows.forEach((r,i)=>{
+    let tr=document.createElement('tr');
+    tr.style.background=r.pr?'#F1F8E9':'#FFF3F3';
+    if(!isAdmin)tr.style.cursor='pointer';
+    if(!isAdmin)tr.onclick=()=>{let m=DB.members.find(x=>x.code===r.code);if(m)showMemberModal(m);};
+    tr.innerHTML=`<td>${i+1}</td><td><b>${r.code}</b></td><td class="nm">${r.name}</td>
+      <td class="hide-sm"><span class="gbadge">${r.grade||'—'}</span></td>
+      <td>${r.time}</td>
+      <td><span class="badge ${r.pr?'p':'a'}">${r.pr?'حاضر':'غائب'}</span></td>
+      <td class="hide-sm"><b style="color:var(--p)">${r.tot}</b></td>
+      <td class="hide-sm"><span class="sbadge">${getGroupName(r.groupId)}</span></td>
+      <td class="hide-sm">${r.father||'—'}</td>
+      ${isAdmin?`<td class="hide-sm" onclick="event.stopPropagation()" style="white-space:nowrap">
+        <button class="btn bp" style="font-size:9px;padding:3px 5px;min-height:24px" onclick="editAttRecord('${r.code}','${tkey}')">✎</button>
+        <button class="btn br" style="font-size:9px;padding:3px 5px;min-height:24px;margin-right:2px" onclick="deleteAttRecord('${r.code}','${tkey}')">🗑</button>
+      </td>`:''}`;
+    b.appendChild(tr);
+  });
+}
+
+function editAttRecord(code,date){
+  let rec=DB.records.find(r=>r.code===code&&r.date===date);
+  let m=DB.members.find(x=>x.code===code);
+  if(!m)return;
+  // Build a modal-like form inside the member modal
+  let box=document.getElementById('memberModalBox');
+  let curStatus=rec?rec.status:'غائب';
+  let curTime=rec?rec.time:'';
+  box.innerHTML=`
+    <div style="font-size:14px;font-weight:700;color:var(--p);margin-bottom:12px;padding-bottom:8px;border-bottom:1.5px solid var(--pl)">
+      ✎ تعديل سجل الحضور
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">${m.name} — ${date}</div>
+    <div class="field" style="margin-bottom:10px">
+      <label>الحالة</label>
+      <select id="editStatus" style="padding:8px;border:1.5px solid var(--bd);border-radius:6px;font-size:13px;width:100%">
+        <option value="حاضر" ${curStatus==='حاضر'?'selected':''}>حاضر</option>
+        <option value="غائب" ${curStatus==='غائب'?'selected':''}>غائب</option>
+      </select>
+    </div>
+    <div class="field" style="margin-bottom:14px">
+      <label>وقت الحضور (اتركه فارغ للغائب)</label>
+      <input id="editTime" type="text" value="${curTime==='---'?'':curTime}" placeholder="مثال: 10:30 ص" style="padding:8px;border:1.5px solid var(--bd);border-radius:6px;font-size:13px;width:100%">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bg" style="flex:1;justify-content:center" onclick="saveAttEdit('${code}','${date}')">✓ حفظ</button>
+      <button class="btn bgr" style="flex:1;justify-content:center" onclick="document.getElementById('memberModal').classList.remove('on')">إلغاء</button>
+    </div>`;
+  document.getElementById('memberModal').classList.add('on');
+}
+async function saveAttEdit(code,date){
+  let status=getVal('editStatus');
+  let time=document.getElementById('editTime').value.trim()||'---';
+  let m=DB.members.find(x=>x.code===code);
+  if(!m)return;
+  let ds=new Date(date).toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  let rec={code,name:m.name,grade:m.grade,groupId:m.groupId,father:m.father||'',
+    time:status==='غائب'?'---':time,status,date,dateStr:ds,byName:currentUser.name};
+  logActivity('تعديل سجل حضور: '+m.name+' — '+date+' — '+status);
+  // Update todayAtt if editing today
+  let tkey=todayKey();
+  if(date===tkey){
+    if(status==='حاضر'){
+      if(!DB.todayAtt)DB.todayAtt={};
+      DB.todayAtt[code]={time:status==='غائب'?'---':time,byName:currentUser.name};
+    } else {
+      if(DB.todayAtt)delete DB.todayAtt[code];
+    }
+  }
+  await saveDB({recordsPatch:{upsert:[rec]}});
+  document.getElementById('memberModal').classList.remove('on');
+  renderReport();
+  if(date===tkey)renderAtt();
+}
+function deleteAttRecord(code,date){
+  let m=DB.members.find(x=>x.code===code);
+  if(!m)return;
+  showModal('مسح سجل','مسح سجل '+m.name+' ليوم '+date+' نهائياً؟','نعم امسح',async()=>{
+    let tkey=todayKey();
+    if(date===tkey&&DB.todayAtt)delete DB.todayAtt[code];
+    logActivity('حذف سجل حضور: '+m.name+' — '+date);
+    await saveDB({skipAttMerge:true,recordsPatch:{remove:[code+'|'+date]}});
+    renderReport();
+    if(date===tkey)renderAtt();
+  });
+}
+function renderMonthlyRpt(){
+  let month=parseInt(getVal('rptMonth')||new Date().getMonth()+1);
+  let year=parseInt(getVal('rptYear')||new Date().getFullYear());
+  let grpfv=getVal('rptGroupFM');
+  let daysInMonth=new Date(year,month,0).getDate();
+  let days=[...Array(daysInMonth)].map((_,i)=>`${year}-${String(month).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`);
+  let pool=currentUser.role==='servant'
+    ? DB.members.filter(m=>m.groupId===currentUser.groupId)
+    : (grpfv?DB.members.filter(m=>m.groupId===grpfv):DB.members);
+  let totalPr=0,totalAb=0;
+  let gv=grpfv;
+  setRptActions(`<button class="btn bgo" onclick="printMonthlyRpt(${month},${year},'${gv}')">🖨 طباعة الشهري</button>
+    <button class="btn bp" onclick="exportMonthlyExcel()">📊 Excel</button>`);
+  setRptHead('<th>الكود</th><th>الاسم</th><th>السنة</th><th>المجموعة</th><th>أيام الحضور</th><th>أيام الغياب</th><th>%</th>');
+  let b=document.getElementById('rptBody');if(!b)return;b.innerHTML='';
+  pool.forEach(m=>{
+    let prD=days.filter(d=>(DB.records||[]).some(r=>r.code===m.code&&r.date===d&&r.status==='حاضر')).length;
+    let abD=days.filter(d=>(DB.records||[]).some(r=>r.code===m.code&&r.date===d&&r.status==='غائب')).length;
+    let pc=daysInMonth?Math.round(prD/daysInMonth*100):0;
+    totalPr+=prD;totalAb+=abD;
+    let tr=document.createElement('tr');tr.style.background=prD>abD?'#F1F8E9':'#FFF3F3';
+    tr.innerHTML=`<td><b>${m.code}</b></td><td class="nm">${m.name}</td>
+      <td><span class="gbadge">${m.grade||'—'}</span></td>
+      <td><span class="sbadge">${getGroupName(m.groupId)}</span></td>
+      <td><b style="color:var(--g)">${prD}</b></td>
+      <td><b style="color:var(--r)">${abD}</b></td>
+      <td><b style="color:var(--p)">${pc}%</b></td>`;
+    b.appendChild(tr);
+  });
+  let pct=totalPr+totalAb>0?Math.round(totalPr/(totalPr+totalAb)*100):0;
+  setRptStats(pool.length,totalPr,totalAb,pct+'%');
+}
+
+function renderRangeRpt(){
+  let from=getVal('rptFrom')||fmtDateKey(new Date(new Date().getFullYear(),new Date().getMonth(),1));
+  let to=getVal('rptTo')||todayKey();
+  let days=[],cur=parseDateKey(from),toD=parseDateKey(to);
+  while(cur<=toD){days.push(fmtDateKey(cur));cur.setDate(cur.getDate()+1);}
+  let f=from,t=to;
+  setRptActions(`<button class="btn bgo" onclick="printRangeRpt('${f}','${t}')">🖨 طباعة تقرير الفترة</button>
+    <button class="btn bp" onclick="exportRangeExcel()">📊 Excel</button>`);
+  setRptHead('<th>الكود</th><th>الاسم</th><th>السنة</th><th>المجموعة</th><th>أيام الحضور</th><th>أيام الغياب</th><th>%</th>');
+  let b=document.getElementById('rptBody');if(!b)return;b.innerHTML='';
+  let totalPr=0;
+  let rngPool=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):DB.members;
+  rngPool.forEach(m=>{
+    let prD=days.filter(d=>(DB.records||[]).some(r=>r.code===m.code&&r.date===d&&r.status==='حاضر')).length;
+    let abD=days.filter(d=>(DB.records||[]).some(r=>r.code===m.code&&r.date===d&&r.status==='غائب')).length;
+    let pc=days.length?Math.round(prD/days.length*100):0;
+    totalPr+=prD;
+    let tr=document.createElement('tr');tr.style.background=prD>=abD?'#F1F8E9':'#FFF3F3';
+    tr.innerHTML=`<td><b>${m.code}</b></td><td class="nm">${m.name}</td>
+      <td><span class="gbadge">${m.grade||'—'}</span></td>
+      <td><span class="sbadge">${getGroupName(m.groupId)}</span></td>
+      <td><b style="color:var(--g)">${prD}</b></td>
+      <td><b style="color:var(--r)">${abD}</b></td>
+      <td><b style="color:var(--p)">${pc}%</b></td>`;
+    b.appendChild(tr);
+  });
+  let rs=document.getElementById('rptStats');
+  if(rs)rs.innerHTML=`<div class="sc t"><div class="sc-n">${rngPool.length}</div><div class="sc-l">عدد الأعضاء</div></div>
+    <div class="sc pr"><div class="sc-n">${days.length}</div><div class="sc-l">عدد الأيام</div></div>
+    <div class="sc ab"><div class="sc-n">${totalPr}</div><div class="sc-l">إجمالي حضور</div></div>
+    <div class="sc pc"><div class="sc-n">${from.slice(5)} → ${to.slice(5)}</div><div class="sc-l">الفترة</div></div>`;
+}
+
+function renderMemberRpt(){
+  let code=getVal('rptMemberSel');
+  setRptActions('');
+  let rs=document.getElementById('rptStats');if(rs)rs.innerHTML='';
+  let iAdm=currentUser.role==='admin';
+  setRptHead('<th>التاريخ</th><th>الوقت</th><th>الحالة</th><th>سجّل بواسطة</th>'+(iAdm?'<th>إجراء</th>':''));
+  let b=document.getElementById('rptBody');if(!b)return;b.innerHTML='';
+  if(!code){b.innerHTML='<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--txm)">اختر عضوًا من القائمة</td></tr>';return;}
+  let m=DB.members.find(x=>x.code===code);if(!m)return;
+  if(currentUser.role==='servant'&&m.groupId!==currentUser.groupId){
+    document.getElementById('rptBody').innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--txm)">هذا العضو ليس في مجموعتك</td></tr>';return;
+  }
+  let hist=(DB.records||[]).filter(h=>h.code===code).sort((a,c)=>c.date.localeCompare(a.date));
+  let prCnt=hist.filter(h=>h.status==='حاضر').length;
+  let abCnt=hist.filter(h=>h.status==='غائب').length;
+  setRptStats(hist.length,prCnt,abCnt,(hist.length?Math.round(prCnt/hist.length*100):0)+'%');
+  setRptActions(`<button class="btn bgo" onclick="printMemberRpt('${code}')">🖨 طباعة تقرير العضو</button>
+    <button class="btn bp" onclick="exportMemberExcel()">📊 Excel</button>`);
+  if(!hist.length){b.innerHTML='<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--txm)">لا يوجد سجل حضور بعد</td></tr>';return;}
+  hist.forEach(h=>{
+    let tr=document.createElement('tr');tr.style.background=h.status==='حاضر'?'#F1F8E9':'#FFF3F3';
+    tr.innerHTML=`<td>${h.dateStr||h.date}</td><td>${h.time}</td>
+      <td><span class="badge ${h.status==='حاضر'?'p':'a'}">${h.status}</span></td>
+      <td>${h.byName||'—'}</td>
+      ${iAdm?`<td style="white-space:nowrap">
+        <button class="btn bp" style="font-size:9px;padding:3px 5px;min-height:24px" onclick="editAttRecord('${h.code}','${h.date}')">✎</button>
+        <button class="btn br" style="font-size:9px;padding:3px 5px;min-height:24px;margin-right:2px" onclick="deleteAttRecord('${h.code}','${h.date}')">🗑</button>
+      </td>`:''}`;
+    b.appendChild(tr);
+  });
+}
+
+function renderAlertsRpt(){
+  let thresh=parseInt(getVal('rptAbsThresh'))||3;
+  let grpfv=getVal('rptGroupFA');
+  let pool=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):(grpfv?DB.members.filter(m=>m.groupId===grpfv):DB.members);
+  let recMap=buildRecordsMap();
+  let rows=pool.map(m=>{
+    let a=getConsecutiveAbsences(m.code,recMap);
+    return{...m,abCount:a.count,lastPresent:a.lastPresent};
+  }).filter(r=>r.abCount>=thresh).sort((a,b)=>b.abCount-a.abCount);
+  let rs=document.getElementById('rptStats');
+  if(rs)rs.innerHTML=`<div class="sc t"><div class="sc-n">${pool.length}</div><div class="sc-l">إجمالي الأعضاء</div></div>
+    <div class="sc ab"><div class="sc-n">${rows.length}</div><div class="sc-l">يحتاجون متابعة</div></div>
+    <div class="sc pc"><div class="sc-n">≥${thresh}</div><div class="sc-l">حد الغياب المتتالي</div></div>`;
+  setRptActions(`<button class="btn bgo" onclick="printAlertsRpt(${thresh})">🖨 طباعة</button>
+    <button class="btn bg" onclick="exportAlertsExcel(${thresh})">📊 Excel</button>`);
+  setRptHead('<th>م</th><th>الكود</th><th>الاسم</th><th class="hide-sm">السنة</th><th class="hide-sm">المجموعة</th><th>غياب متتالي</th><th class="hide-sm">آخر حضور</th><th>تواصل</th>');
+  let b=document.getElementById('rptBody');if(!b)return;b.innerHTML='';
+  if(!rows.length){b.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--txm)">🎉 لا يوجد أعضاء بغياب متكرر فوق الحد المحدد</td></tr>';return;}
+  rows.forEach((r,i)=>{
+    let tr=document.createElement('tr');tr.style.background='#FFF3F3';tr.style.cursor='pointer';
+    tr.onclick=()=>showMemberModal(DB.members.find(x=>x.code===r.code));
+    tr.innerHTML=`<td>${i+1}</td><td><b>${r.code}</b></td><td class="nm">${r.name}</td>
+      <td class="hide-sm"><span class="gbadge">${r.grade||'—'}</span></td>
+      <td class="hide-sm"><span class="sbadge">${getGroupName(r.groupId)}</span></td>
+      <td><span class="abadge">${r.abCount} يوم</span></td>
+      <td class="hide-sm">${r.lastPresent||'لا يوجد'}</td>
+      <td onclick="event.stopPropagation()">${waBtn(r.phone,r.name)}</td>`;
+    b.appendChild(tr);
+  });
+}
+
+function renderRankingRpt(){
+  let from=getVal('rptRkFrom')||fmtDateKey(new Date(new Date().getFullYear(),new Date().getMonth(),1));
+  let to=getVal('rptRkTo')||todayKey();
+  let grpfv=getVal('rptGroupFR');
+  let days=[],cur=parseDateKey(from),toD=parseDateKey(to);
+  while(cur<=toD){days.push(fmtDateKey(cur));cur.setDate(cur.getDate()+1);}
+  let pool=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):(grpfv?DB.members.filter(m=>m.groupId===grpfv):DB.members);
+  let recMap=buildRecordsMap();
+  let rows=pool.map(m=>{
+    let st=computePctInRange(m.code,recMap,days);
+    return{...m,pr:st.pr,ab:st.ab,pc:st.pc};
+  }).filter(r=>r.pr+r.ab>0).sort((a,b)=>b.pc-a.pc||b.pr-a.pr);
+  let medals=['🥇','🥈','🥉'];
+  setRptActions(`<button class="btn bgo" onclick="printRankingRpt('${from}','${to}')">🖨 طباعة</button>
+    <button class="btn bg" onclick="exportRankingExcel('${from}','${to}')">📊 Excel</button>`);
+  setRptHead('<th>#</th><th>الكود</th><th>الاسم</th><th class="hide-sm">السنة</th><th class="hide-sm">المجموعة</th><th>أيام حضور</th><th class="hide-sm">أيام غياب</th><th>النسبة</th>');
+  let rs=document.getElementById('rptStats');
+  if(rs)rs.innerHTML=`<div class="sc t"><div class="sc-n">${rows.length}</div><div class="sc-l">عدد الأعضاء</div></div>
+    <div class="sc pr"><div class="sc-n">${days.length}</div><div class="sc-l">عدد الأيام</div></div>
+    <div class="sc pc"><div class="sc-n">${from.slice(5)} → ${to.slice(5)}</div><div class="sc-l">الفترة</div></div>
+    <div class="sc t"><div class="sc-n">${rows.length?rows[0].pc+'%':'—'}</div><div class="sc-l">أعلى نسبة</div></div>`;
+  let b=document.getElementById('rptBody');if(!b)return;b.innerHTML='';
+  if(!rows.length){b.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--txm)">لا توجد بيانات حضور في هذه الفترة</td></tr>';return;}
+  rows.forEach((r,i)=>{
+    let tr=document.createElement('tr');tr.style.background=r.pc>=80?'#F1F8E9':r.pc>=50?'#FFF8E1':'#FFF3F3';tr.style.cursor='pointer';
+    tr.onclick=()=>showMemberModal(DB.members.find(x=>x.code===r.code));
+    tr.innerHTML=`<td class="rank-medal">${medals[i]||(i+1)}</td><td><b>${r.code}</b></td><td class="nm">${r.name}</td>
+      <td class="hide-sm"><span class="gbadge">${r.grade||'—'}</span></td>
+      <td class="hide-sm"><span class="sbadge">${getGroupName(r.groupId)}</span></td>
+      <td><b style="color:var(--g)">${r.pr}</b></td>
+      <td class="hide-sm"><b style="color:var(--r)">${r.ab}</b></td>
+      <td><b style="color:var(--p)">${r.pc}%</b></td>`;
+    b.appendChild(tr);
+  });
+}
+
+// ===== PRINT =====
+function getFamilyName(g){
+  if(!g)return '';
+  if(g.includes('اعدادي')||g.includes('إعدادي'))return 'أسرة إعدادي';
+  if(g.includes('ثانوي'))return 'أسرة ثانوي';
+  if(g.includes('جامع'))return 'أسرة جامعة';
+  return '';
+}
+function printHdr(title,sub,tot,pr,ab){
+  let pc=tot&&pr!==''&&pr!==undefined?Math.round(Number(pr)/Number(tot)*100):0;
+  let churchName=(DB&&DB.churchName)||CHURCH_NAME;
+  let role=currentUser?currentUser.role:'';
+  let userName=currentUser?currentUser.name:'';
+  return`<div style="font-family:Arial;direction:rtl;padding:10px">
+  <div class="hdr">
+    <div style="font-size:18px;font-weight:700;color:#1A237E">✝ ${churchName}</div>
+    ${role==='servant'?`<div style="font-size:11px;color:#1B5E20">${userName}</div>`:''}
+  </div>
+  <h2>${title}</h2>
+  <p style="font-size:11px;color:#555;margin:2px 0">${sub||''}</p>
+  <div class="st">
+    <div class="s">إجمالي: <span class="b">${tot}</span></div>
+    ${pr!==''&&pr!==undefined?`<div class="s">حاضرون: <span class="g">${pr}</span></div>
+    <div class="s">غائبون: <span class="r">${ab}</span></div>
+    <div class="s">نسبة: <span class="b">${pc}%</span></div>`:''}
+  </div>`;
+}
+function doOpenPrint(html){
+  let old=document.getElementById('_printArea');if(old)old.remove();
+  let div=document.createElement('div');
+  div.id='_printArea';
+  div.innerHTML=html;
+  document.body.appendChild(div);
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{let el=document.getElementById('_printArea');if(el)el.remove();},1500);
+  },300);
+}
+function printDailyRpt(filter){
+  let tkey=getVal('rptDateF')||todayKey();
+  let src=DB.records||[];
+  let grpFilter=getVal('rptGroupF');
+  // Servant sees only his group
+  let base=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):DB.members;
+  let ppool=grpFilter?base.filter(m=>m.groupId===grpFilter):base;
+  // Only show members who have records for this date
+  let rows=ppool.map(m=>{
+    let rec=src.find(r=>r.code===m.code&&r.date===tkey);
+    let inAtt=tkey===todayKey()&&DB.todayAtt&&DB.todayAtt[m.code];
+    if(!rec&&!inAtt)return null;
+    let pr=rec?rec.status==='حاضر':(inAtt?true:false);
+    let tot=src.filter(r=>r.code===m.code&&r.status==='حاضر').length;
+    return{...m,pr,time:rec?rec.time:(inAtt?DB.todayAtt[m.code].time:'---'),tot};
+  }).filter(Boolean);
+  if(filter==='حاضر')rows=rows.filter(r=>r.pr);
+  else if(filter==='غائب')rows=rows.filter(r=>!r.pr);
+  let prC=rows.filter(r=>r.pr).length;
+  let title=filter==='حاضر'?'الحاضرون':filter==='غائب'?'الغائبون':'الحضور والغياب';
+  let dStr2=new Date(tkey+'T12:00:00').toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  let html=printHdr('تقرير اليوم — '+title,dStr2,rows.length,prC,rows.length-prC);
+  html+=`<table><tr><th>م</th><th>الكود</th><th>الاسم</th><th>السنة</th><th>الوقت</th><th>الحالة</th><th>مرات</th><th>المجموعة</th><th>أب الاعتراف</th></tr>`;
+  rows.forEach((r,i)=>{html+=`<tr class="${r.pr?'pr':'ab'}"><td>${i+1}</td><td>${r.code}</td><td>${r.name}</td><td><span class="gb">${r.grade||'—'}</span></td><td>${r.time}</td><td class="${r.pr?'g':'r'}">${r.pr?'حاضر':'غائب'}</td><td>${r.tot}</td><td><span class="sb">${getGroupName(r.groupId)}</span></td><td>${r.father||'—'}</td></tr>`;});
+  html+='</table>';doOpenPrint(html);
+}
+function printMonthlyRpt(month,year,grpfv){
+  let daysInMonth=new Date(year,month,0).getDate();
+  let days=[...Array(daysInMonth)].map((_,i)=>`${year}-${String(month).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`);
+  let pool=currentUser.role==='servant'
+    ? DB.members.filter(m=>m.groupId===currentUser.groupId)
+    : (grpfv?DB.members.filter(m=>m.groupId===grpfv):DB.members);
+  let mName=new Date(year,month-1,1).toLocaleDateString('ar-EG',{month:'long',year:'numeric'});
+  let html=printHdr('التقرير الشهري — '+mName,'',pool.length,'','');
+  html+=`<table><tr><th>الكود</th><th>الاسم</th><th>السنة</th><th>المجموعة</th><th>أيام الحضور</th><th>أيام الغياب</th><th>%</th></tr>`;
+  pool.forEach(m=>{
+    let pr=days.filter(d=>(DB.records||[]).some(r=>r.code===m.code&&r.date===d&&r.status==='حاضر')).length;
+    let ab=days.filter(d=>(DB.records||[]).some(r=>r.code===m.code&&r.date===d&&r.status==='غائب')).length;
+    html+=`<tr class="${pr>=ab?'pr':'ab'}"><td>${m.code}</td><td>${m.name}</td><td><span class="gb">${m.grade||'—'}</span></td><td><span class="sb">${getGroupName(m.groupId)}</span></td><td class="g">${pr}</td><td class="r">${ab}</td><td>${daysInMonth?Math.round(pr/daysInMonth*100):0}%</td></tr>`;
+  });
+  html+='</table>';doOpenPrint(html);
+}
+function printRangeRpt(from,to){
+  let days=[],cur=parseDateKey(from),toD=parseDateKey(to);
+  while(cur<=toD){days.push(fmtDateKey(cur));cur.setDate(cur.getDate()+1);}
+  let pool=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):DB.members;
+  let grpFilter=getVal('rptGroupF');
+  if(grpFilter)pool=pool.filter(m=>m.groupId===grpFilter);
+  let html=printHdr('تقرير الفترة: '+from+' → '+to,'',pool.length,'','');
+  html+=`<table><tr><th>الكود</th><th>الاسم</th><th>السنة</th><th>المجموعة</th><th>أيام الحضور</th><th>أيام الغياب</th><th>%</th></tr>`;
+  pool.forEach(m=>{
+    let pr=days.filter(d=>(DB.records||[]).some(r=>r.code===m.code&&r.date===d&&r.status==='حاضر')).length;
+    let ab=days.filter(d=>(DB.records||[]).some(r=>r.code===m.code&&r.date===d&&r.status==='غائب')).length;
+    html+=`<tr class="${pr>=ab?'pr':'ab'}"><td>${m.code}</td><td>${m.name}</td><td><span class="gb">${m.grade||'—'}</span></td><td><span class="sb">${getGroupName(m.groupId)}</span></td><td class="g">${pr}</td><td class="r">${ab}</td><td>${days.length?Math.round(pr/days.length*100):0}%</td></tr>`;
+  });
+  html+='</table>';doOpenPrint(html);
+}
+function printMemberRpt(code){
+  let m=DB.members.find(x=>x.code===code);if(!m)return;
+  let hist=(DB.records||[]).filter(r=>r.code===code).sort((a,b)=>b.date.localeCompare(a.date));
+  let prC=hist.filter(h=>h.status==='حاضر').length;
+  let html=printHdr('تقرير العضو: '+m.name,'الكود: '+m.code+' | '+(m.grade||''),hist.length,prC,hist.length-prC);
+  html+=`<table><tr><th>التاريخ</th><th>الوقت</th><th>الحالة</th><th>سجّل بواسطة</th></tr>`;
+  hist.forEach(h=>{html+=`<tr class="${h.status==='حاضر'?'pr':'ab'}"><td>${h.dateStr||h.date}</td><td>${h.time}</td><td class="${h.status==='حاضر'?'g':'r'}">${h.status}</td><td>${h.byName||'—'}</td></tr>`;});
+  html+='</table>';doOpenPrint(html);
+}
+function printAlertsRpt(thresh){
+  let grpfv=getVal('rptGroupFA');
+  let pool=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):(grpfv?DB.members.filter(m=>m.groupId===grpfv):DB.members);
+  let recMap=buildRecordsMap();
+  let rows=pool.map(m=>{let a=getConsecutiveAbsences(m.code,recMap);return{...m,abCount:a.count,lastPresent:a.lastPresent};}).filter(r=>r.abCount>=thresh).sort((a,b)=>b.abCount-a.abCount);
+  let html=printHdr('تنبيهات الغياب المتكرر (≥'+thresh+' أيام)','',pool.length,'','');
+  html+=`<table><tr><th>م</th><th>الكود</th><th>الاسم</th><th>السنة</th><th>المجموعة</th><th>غياب متتالي</th><th>آخر حضور</th></tr>`;
+  rows.forEach((r,i)=>{html+=`<tr class="ab"><td>${i+1}</td><td>${r.code}</td><td>${r.name}</td><td><span class="gb">${r.grade||'—'}</span></td><td><span class="sb">${getGroupName(r.groupId)}</span></td><td class="r">${r.abCount}</td><td>${r.lastPresent||'لا يوجد'}</td></tr>`;});
+  html+='</table>';doOpenPrint(html);
+}
+function printRankingRpt(from,to){
+  let grpfv=getVal('rptGroupFR');
+  let days=[],cur=parseDateKey(from),toD=parseDateKey(to);
+  while(cur<=toD){days.push(fmtDateKey(cur));cur.setDate(cur.getDate()+1);}
+  let pool=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):(grpfv?DB.members.filter(m=>m.groupId===grpfv):DB.members);
+  let recMap=buildRecordsMap();
+  let rows=pool.map(m=>{let st=computePctInRange(m.code,recMap,days);return{...m,pr:st.pr,ab:st.ab,pc:st.pc};}).filter(r=>r.pr+r.ab>0).sort((a,b)=>b.pc-a.pc);
+  let html=printHdr('ترتيب الالتزام: '+from+' → '+to,'',pool.length,'','');
+  html+=`<table><tr><th>#</th><th>الكود</th><th>الاسم</th><th>السنة</th><th>المجموعة</th><th>أيام حضور</th><th>أيام غياب</th><th>النسبة</th></tr>`;
+  rows.forEach((r,i)=>{html+=`<tr class="${r.pc>=80?'pr':'ab'}"><td>${i+1}</td><td>${r.code}</td><td>${r.name}</td><td><span class="gb">${r.grade||'—'}</span></td><td><span class="sb">${getGroupName(r.groupId)}</span></td><td class="g">${r.pr}</td><td class="r">${r.ab}</td><td>${r.pc}%</td></tr>`;});
+  html+='</table>';doOpenPrint(html);
+}
+// ----- Excel export functions -----
+function exportDailyExcel(){
+  let tkey=getVal('rptDateF')||todayKey();
+  let src=DB.records||[];
+  let grpFilter=getVal('rptGroupF');
+  let base=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):DB.members;
+  let ppool=grpFilter?base.filter(m=>m.groupId===grpFilter):base;
+  let rows=ppool.map(m=>{
+    let rec=src.find(r=>r.code===m.code&&r.date===tkey);
+    let inAtt=tkey===todayKey()&&DB.todayAtt&&DB.todayAtt[m.code];
+    if(!rec&&!inAtt)return null;
+    let pr=rec?rec.status==='حاضر':!!inAtt;
+    let tot=src.filter(r=>r.code===m.code&&r.status==='حاضر').length;
+    return[m.code,m.name,m.grade||'',rec?rec.time:(inAtt?DB.todayAtt[m.code].time:'---'),pr?'حاضر':'غائب',tot,getGroupName(m.groupId),m.father||''];
+  }).filter(Boolean);
+  exportToExcel('تقرير_يوم_'+tkey+'.xlsx','اليوم',['الكود','الاسم','السنة','الوقت','الحالة','مرات','المجموعة','أب الاعتراف'],rows);
+}
+function exportMonthlyExcel(){
+  let month=parseInt(getVal('rptMonth')||new Date().getMonth()+1);
+  let year=parseInt(getVal('rptYear')||new Date().getFullYear());
+  let grpfv=getVal('rptGroupFM');
+  let daysInMonth=new Date(year,month,0).getDate();
+  let days=[...Array(daysInMonth)].map((_,i)=>`${year}-${String(month).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`);
+  let pool=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):(grpfv?DB.members.filter(m=>m.groupId===grpfv):DB.members);
+  let rows=pool.map(m=>{
+    let pr=days.filter(d=>(DB.records||[]).some(r=>r.code===m.code&&r.date===d&&r.status==='حاضر')).length;
+    let ab=days.filter(d=>(DB.records||[]).some(r=>r.code===m.code&&r.date===d&&r.status==='غائب')).length;
+    return[m.code,m.name,m.grade||'',getGroupName(m.groupId),pr,ab,(daysInMonth?Math.round(pr/daysInMonth*100):0)+'%'];
+  });
+  exportToExcel('تقرير_شهري_'+year+'_'+month+'.xlsx','شهري',['الكود','الاسم','السنة','المجموعة','أيام حضور','أيام غياب','%'],rows);
+}
+function exportRangeExcel(){
+  let from=getVal('rptFrom')||fmtDateKey(new Date(new Date().getFullYear(),new Date().getMonth(),1));
+  let to=getVal('rptTo')||todayKey();
+  let days=[],cur=parseDateKey(from),toD=parseDateKey(to);
+  while(cur<=toD){days.push(fmtDateKey(cur));cur.setDate(cur.getDate()+1);}
+  let pool=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):DB.members;
+  let rows=pool.map(m=>{
+    let pr=days.filter(d=>(DB.records||[]).some(r=>r.code===m.code&&r.date===d&&r.status==='حاضر')).length;
+    let ab=days.filter(d=>(DB.records||[]).some(r=>r.code===m.code&&r.date===d&&r.status==='غائب')).length;
+    return[m.code,m.name,m.grade||'',getGroupName(m.groupId),pr,ab,(days.length?Math.round(pr/days.length*100):0)+'%'];
+  });
+  exportToExcel('تقرير_فترة_'+from+'_'+to+'.xlsx','فترة',['الكود','الاسم','السنة','المجموعة','أيام حضور','أيام غياب','%'],rows);
+}
+function exportMemberExcel(){
+  let code=getVal('rptMemberSel');if(!code)return;
+  let m=DB.members.find(x=>x.code===code);if(!m)return;
+  let hist=(DB.records||[]).filter(r=>r.code===code).sort((a,b)=>b.date.localeCompare(a.date));
+  let rows=hist.map(h=>[h.dateStr||h.date,h.time,h.status,h.byName||'']);
+  exportToExcel('تقرير_'+m.name+'.xlsx','تقرير عضو',['التاريخ','الوقت','الحالة','سجّل بواسطة'],rows);
+}
+function exportAlertsExcel(thresh){
+  let grpfv=getVal('rptGroupFA');
+  let pool=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):(grpfv?DB.members.filter(m=>m.groupId===grpfv):DB.members);
+  let recMap=buildRecordsMap();
+  let rows=pool.map(m=>{let a=getConsecutiveAbsences(m.code,recMap);return{...m,abCount:a.count,lastPresent:a.lastPresent};}).filter(r=>r.abCount>=thresh).sort((a,b)=>b.abCount-a.abCount)
+    .map(r=>[r.code,r.name,r.grade||'',getGroupName(r.groupId),r.abCount,r.lastPresent||'لا يوجد',r.phone||'']);
+  exportToExcel('تنبيهات_الغياب.xlsx','تنبيهات',['الكود','الاسم','السنة','المجموعة','غياب متتالي','آخر حضور','التليفون'],rows);
+}
+function exportRankingExcel(from,to){
+  let grpfv=getVal('rptGroupFR');
+  let days=[],cur=parseDateKey(from),toD=parseDateKey(to);
+  while(cur<=toD){days.push(fmtDateKey(cur));cur.setDate(cur.getDate()+1);}
+  let pool=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):(grpfv?DB.members.filter(m=>m.groupId===grpfv):DB.members);
+  let recMap=buildRecordsMap();
+  let rows=pool.map(m=>{let st=computePctInRange(m.code,recMap,days);return{...m,pr:st.pr,ab:st.ab,pc:st.pc};}).filter(r=>r.pr+r.ab>0).sort((a,b)=>b.pc-a.pc)
+    .map((r,i)=>[i+1,r.code,r.name,r.grade||'',getGroupName(r.groupId),r.pr,r.ab,r.pc+'%']);
+  exportToExcel('ترتيب_الالتزام.xlsx','ترتيب',['#','الكود','الاسم','السنة','المجموعة','أيام حضور','أيام غياب','%'],rows);
+}
+function exportMembersExcel(){
+  let rows=DB.members.map(m=>[m.code,m.name,m.phone||'',m.grade||'',getGroupName(m.groupId),m.addr||'',m.father||'',m.dob||'',m.notes||'']);
+  exportToExcel('قائمة_الأعضاء.xlsx','الأعضاء',['الكود','الاسم','التليفون','السنة','المجموعة','العنوان','أب الاعتراف','تاريخ الميلاد','ملاحظات'],rows);
+}
+
+// ===== SEARCH PAGE =====
+function buildSearchPage(){
+  return`<div class="form-card">
+    <div class="fc-title">🔍 بحث بالاسم أو الكود</div>
+    <div style="display:flex;gap:7px">
+      <input type="text" id="srInput" placeholder="اكتب الاسم أو الكود..." autocomplete="off" style="flex:1;padding:9px 11px;border:1.5px solid var(--bd);border-radius:7px;font-size:14px;color:var(--tx);background:#fff">
+      <button class="btn bp" id="srBtn">🔍 بحث</button>
+    </div>
+  </div><div id="srResult"></div>`;
+}
+function doSearch(){
+  let val=document.getElementById('srInput').value.trim(),res=document.getElementById('srResult');if(!res)return;
+  if(!val){res.innerHTML='<div class="status-bar err">أدخل اسماً أو كوداً</div>';return;}
+  let pool=myMembers();
+  let found=pool.filter(m=>m.code.toLowerCase()===val.toLowerCase()||m.name.includes(val)||m.grade===val);
+  if(!found.length){res.innerHTML='<div class="status-bar err">لا توجد نتائج للبحث عن: '+val+'</div>';return;}
+  res.innerHTML='';
+  found.forEach(m=>{
+    let ta=DB.todayAtt&&DB.todayAtt[m.code];
+    let pr=!!ta;
+    let tot=(DB.records||[]).filter(r=>r.code===m.code&&r.status==='حاضر').length;
+    let hist=(DB.records||[]).filter(r=>r.code===m.code).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+    let card=document.createElement('div');card.className='form-card';card.style.cursor='pointer';
+    card.onclick=()=>showMemberModal(m);
+    card.innerHTML=`<div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;padding-bottom:8px;border-bottom:0.5px solid var(--bd)">
+      <div style="width:42px;height:42px;border-radius:50%;background:var(--pl);color:var(--p);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials(m.name)}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--tx)">${m.name}</div>
+        <div style="font-size:10px;color:var(--txm)">${m.code} · <span class="gbadge">${m.grade||'—'}</span></div></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+        <span class="badge ${pr?'p':'a'}">${pr?'حاضر':'غائب'}</span>
+        <span style="font-size:10px;color:var(--p);font-weight:700">${tot} مرة</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:11px;margin-bottom:7px">
+      <div style="background:var(--bg);padding:5px 7px;border-radius:5px"><div style="color:var(--txm);font-size:9px">التليفون</div><div style="font-weight:700">${m.phone}</div></div>
+      <div style="background:var(--bg);padding:5px 7px;border-radius:5px"><div style="color:var(--txm);font-size:9px">أب الاعتراف</div><div style="font-weight:700">${m.father||'—'}</div></div>
+      <div style="background:var(--bg);padding:5px 7px;border-radius:5px"><div style="color:var(--txm);font-size:9px">العنوان</div><div style="font-weight:700">${m.addr||'—'}</div></div>
+      <div style="background:var(--bg);padding:5px 7px;border-radius:5px"><div style="color:var(--txm);font-size:9px">المجموعة</div><div style="font-weight:700;color:#6A1B9A">${getGroupName(m.groupId)}</div></div>
+    </div>
+    ${hist.length?`<div style="font-size:10px;font-weight:700;color:var(--p);margin-bottom:3px">سجل الحضور</div>${hist.map(h=>`<div class="hist-row"><span>${h.dateStr||h.date}</span><span style="color:var(--txm)">${h.time}</span><span class="badge ${h.status==='حاضر'?'p':'a'}">${h.status}</span></div>`).join('')}`:''}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:5px;flex-wrap:wrap">
+      <span style="font-size:10px;color:var(--txm)">اضغط للتفاصيل الكاملة</span>
+      <div style="display:flex;gap:5px">
+        ${waBtn(m.phone,m.name)}
+        <button class="btn bp" style="font-size:10px;padding:4px 8px;min-height:28px" onclick="event.stopPropagation();editMember('${m.code}')">✎ تعديل</button>
+        ${currentUser.role==='admin'?`<button class="btn br" style="font-size:10px;padding:4px 8px;min-height:28px" onclick="event.stopPropagation();deleteMember('${m.code}')">🗑 حذف</button>`:''}
+      </div>
+    </div>`;
+    res.appendChild(card);
+  });
+}
+
+// ===== MEMBERS PAGE =====
+function buildMembersPage(){
+  return`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;flex-wrap:wrap;gap:6px">
+    <div style="font-size:13px;font-weight:700;color:var(--p)">الأعضاء (<span id="mCount">0</span>)</div>
+    <div style="display:flex;gap:6px">
+      <button class="btn bg" onclick="exportMembersExcel()">📊 Excel</button>
+      <button class="btn bp" onclick="go('register')">+ عضو جديد</button>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <span>فلتر:</span>
+    <select id="memGradeF" onchange="renderMembers()"><option value="">كل السنوات</option></select>
+    <select id="memGroupF" onchange="renderMembers()"><option value="">كل المجموعات</option></select>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:8px">
+    <input type="text" id="memSearch" placeholder="🔍 ابحث بالاسم أو الكود أو التليفون..." autocomplete="off" style="flex:1;padding:8px 11px;border:1.5px solid var(--bd);border-radius:8px;font-size:12px;color:var(--tx);background:#fff">
+  </div>
+  <div class="tbl-wrap"><table><thead><tr>
+    <th style="width:44px">الكود</th><th>الاسم</th>
+    <th style="width:68px">السنة</th><th style="width:52px">المجموعة</th>
+    <th style="width:76px">التليفون</th><th style="width:44px">مرات</th>
+    <th style="width:55px">إجراء</th>
+  </tr></thead><tbody id="membersBody"></tbody></table></div>`;
+}
+function renderMembers(){
+  let gfv=getVal('memGradeF'),grpfv=getVal('memGroupF');
+  let mgf=document.getElementById('memGroupF');
+  if(mgf&&mgf.options.length===1)getServants().forEach(s=>{let o=document.createElement('option');o.value=s.groupId;o.textContent=s.name;mgf.appendChild(o);});
+  if(currentUser.role==='servant'&&mgf){mgf.value=currentUser.groupId;mgf.disabled=true;grpfv=currentUser.groupId;}
+  let srch=document.getElementById('memSearch')?document.getElementById('memSearch').value.trim():'';
+  let base=currentUser.role==='servant'?DB.members.filter(m=>m.groupId===currentUser.groupId):DB.members;
+  let rows=base.filter(m=>{
+    if(gfv&&m.grade!==gfv)return false;
+    if(grpfv&&m.groupId!==grpfv)return false;
+    if(srch&&!m.name.includes(srch)&&!m.code.toLowerCase().includes(srch.toLowerCase())&&!m.phone.includes(srch))return false;
+    return true;
+  });
+  let mc=document.getElementById('mCount');if(mc)mc.textContent=rows.length;
+  let b=document.getElementById('membersBody');if(!b)return;b.innerHTML='';
+  rows.forEach(m=>{
+    let tot=(DB.records||[]).filter(r=>r.code===m.code&&r.status==='حاضر').length;
+    let tr=document.createElement('tr');
+    tr.innerHTML=`<td style="cursor:pointer" onclick="showMemberModal(DB.members.find(x=>x.code==='${m.code}'))"><b>${m.code}</b></td>
+      <td class="nm" style="cursor:pointer" onclick="showMemberModal(DB.members.find(x=>x.code==='${m.code}'))">${m.name}</td>
+      <td><span class="gbadge">${m.grade||'—'}</span></td>
+      <td><span class="sbadge">${getGroupName(m.groupId)}</span></td>
+      <td>${m.phone}</td><td><b style="color:var(--p)">${tot}</b></td>
+      <td><button class="btn bp" style="font-size:9px;padding:3px 6px;min-height:26px" onclick="editMember('${m.code}')">✎</button>${currentUser.role==='admin'?`<button class="btn br" style="font-size:9px;padding:3px 6px;min-height:26px;margin-right:2px" onclick="deleteMember('${m.code}')">🗑</button>`:''}</td>`;
+    b.appendChild(tr);
+  });
+}
+
+// ===== SERVANTS PAGE =====
+function buildServantsPage(){
+  return`<div class="form-card">
+    <div class="fc-title">🔐 إدارة المستخدمين</div>
+    <div class="add-form">
+      <div style="font-size:11px;font-weight:700;color:var(--g);margin-bottom:8px">+ إضافة خادم جديد</div>
+      <div class="form-grid">
+        <div class="field"><label>اسم الخادم *</label><input id="snName" placeholder="مثال: خادم 3"></div>
+        <div class="field"><label>كلمة السر *</label>
+          <div class="pw-wrap"><input type="password" id="snPw" placeholder="كلمة سر مميزة">
+          <button class="pw-show" onclick="let e=document.getElementById('snPw');e.type=e.type==='password'?'text':'password'">👁</button></div>
+        </div>
+      </div>
+      <button class="btn bg" onclick="addServant()">+ إضافة</button>
+      <div id="addMsg" style="font-size:11px;font-weight:700;margin-top:6px"></div>
+    </div>
+    <hr class="section-sep">
+    <div style="font-size:11px;font-weight:700;color:var(--p);margin-bottom:8px">الخدام (<span id="svCount">0</span>)</div>
+    <div id="servantsList"></div>
+    <hr class="section-sep">
+    <div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:8px">⚙ اسم الكنيسة في الطباعة</div>
+    <div class="field" style="margin-bottom:8px">
+      <input id="churchNameInput" placeholder="اسم الكنيسة">
+    </div>
+    <button class="btn bp" onclick="saveChurchName()" style="margin-bottom:10px">✓ حفظ الاسم</button>
+    <hr class="section-sep">
+    <div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:8px">🎓 ترقية السنة الجماعية</div>
+    <div style="font-size:11px;color:var(--txm);margin-bottom:8px">ترقية كل الأعضاء سنة دراسية واحدة دفعة واحدة (بداية كل عام دراسي). أعضاء "تخرج" أو "أخرى" لن يتأثروا.</div>
+    <button class="btn bo" onclick="promoteAllGrades()" style="margin-bottom:10px">🎓 ترقية سنة لكل الأعضاء</button>
+    <hr class="section-sep">
+    <div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:8px">💾 نسخة احتياطية كاملة</div>
+    <div style="font-size:11px;color:var(--txm);margin-bottom:8px">تصدير كل البيانات (أعضاء، خدام، سجلات حضور) كملف JSON، أو استيراد نسخة سابقة لاستعادتها</div>
+    <div style="display:flex;gap:7px;margin-bottom:8px">
+      <button class="btn bg" onclick="exportBackup()" style="flex:1;justify-content:center">⬇ تصدير نسخة احتياطية</button>
+    </div>
+    <div style="display:flex;gap:7px;align-items:center;margin-bottom:6px">
+      <input type="file" id="bkFile" accept=".json" style="flex:1;padding:7px;border:1.5px solid var(--bd);border-radius:7px;font-size:11px;background:#fff">
+      <button class="btn bo" onclick="importBackup()">⬆ استيراد</button>
+    </div>
+    <div id="bkStatus" style="font-size:11px;margin-bottom:4px"></div>
+    <hr class="section-sep">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700;color:var(--p)">📜 سجل النشاط</div>
+      <button class="btn bp" style="font-size:10px;padding:4px 9px" onclick="toggleActivityLog()" id="actLogToggle">عرض</button>
+    </div>
+    <div id="activityLogWrap" style="display:none">
+      <div id="activityLogList" class="tbl-wrap" style="max-height:320px;margin-bottom:10px"></div>
+    </div>
+    <hr class="section-sep">
+    <div style="font-size:11px;font-weight:700;color:var(--r);margin-bottom:6px">⚠️ مسح بيانات التجربة</div>
+    <div style="font-size:11px;color:var(--txm);margin-bottom:8px">مسح كل سجلات الحضور والتقارير (الأعضاء لن يُحذفوا)</div>
+    <button class="btn br" onclick="clearAllData()" style="margin-bottom:10px">🗑 مسح كل البيانات</button>
+    <hr class="section-sep">
+    <div style="font-size:11px;font-weight:700;color:var(--p);margin-bottom:8px">تغيير كلمة سر المسئول</div>
+    <div class="form-grid">
+      <div class="field"><label>الكلمة الحالية</label><input type="password" id="adOld"></div>
+      <div class="field"><label>الكلمة الجديدة</label><input type="password" id="adNew"></div>
+    </div>
+    <button class="btn bp" onclick="changeAdminPw()">✓ تغيير</button>
+    <div id="pwMsg" style="font-size:11px;font-weight:700;margin-top:6px"></div>
+  </div>`;
+}
+async function saveChurchName(){
+  let name=document.getElementById('churchNameInput').value.trim();
+  if(!name)return;
+  DB.churchName=name;
+  await saveDB();
+  setStatus('تم حفظ اسم الكنيسة: '+name,'ok');
+}
+// ----- Bulk grade promotion -----
+const GRADE_SEQUENCE=['الأولى إعدادي','الثانية إعدادي','الثالثة إعدادي','الأولى ثانوي','الثانية ثانوي','الثالثة ثانوي','الأولى جامعة','الثانية جامعة','الثالثة جامعة','الرابعة جامعة','الخامسة جامعة','تخرج'];
+function promoteAllGrades(){
+  let counts={};
+  DB.members.forEach(m=>{let i=GRADE_SEQUENCE.indexOf(m.grade);if(i>=0&&i<GRADE_SEQUENCE.length-1)counts[m.grade]=(counts[m.grade]||0)+1;});
+  let totalAffected=Object.values(counts).reduce((a,b)=>a+b,0);
+  if(!totalAffected){showModal('ترقية السنة','لا يوجد أعضاء قابلين للترقية حالياً (الكل "تخرج" أو "أخرى" أو سنة غير معروفة).','حسناً',null);return;}
+  showModal('🎓 ترقية السنة الجماعية','سيتم ترقية '+totalAffected+' عضو سنة دراسية واحدة (مَن هم على "تخرج" أو "أخرى" لن يتأثروا). هل أنت متأكد؟','نعم، رقّي الكل',async()=>{
+    let promoted=[];
+    DB.members.forEach(m=>{
+      let i=GRADE_SEQUENCE.indexOf(m.grade);
+      if(i>=0&&i<GRADE_SEQUENCE.length-1){m.grade=GRADE_SEQUENCE[i+1];promoted.push(m);}
+    });
+    logActivity('🎓 ترقية السنة الجماعية: '+promoted.length+' عضو');
+    await saveDB({membersPatch:{upsert:promoted}});populateAllFilters();renderCurrentPage();
+    showModal('تم','تم ترقية '+promoted.length+' عضو بنجاح','حسناً',null,'ok');
+  });
+}
+// ----- Activity log viewer -----
+function toggleActivityLog(){
+  let wrap=document.getElementById('activityLogWrap');
+  let btn=document.getElementById('actLogToggle');
+  if(!wrap)return;
+  let showing=wrap.style.display!=='none';
+  wrap.style.display=showing?'none':'block';
+  btn.textContent=showing?'عرض':'إخفاء';
+  if(!showing)renderActivityLog();
+}
+function renderActivityLog(){
+  let el=document.getElementById('activityLogList');if(!el)return;
+  let log=DB.activityLog||[];
+  if(!log.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--txm);font-size:12px">لا يوجد نشاط مسجل بعد</div>';return;}
+  el.innerHTML=`<table><thead><tr><th style="width:90px">الوقت</th><th style="width:90px">المستخدم</th><th>الإجراء</th></tr></thead><tbody></tbody></table>`;
+  let tbody=el.querySelector('tbody');
+  log.forEach(l=>{
+    let tr=document.createElement('tr');
+    tr.innerHTML=`<td style="font-size:10px;color:var(--txm);white-space:nowrap">${l.time}</td><td style="font-size:10px;font-weight:700">${l.by}</td><td style="font-size:11px">${l.action}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+function renderServants(){
+  let ci=document.getElementById('churchNameInput');
+  if(ci)ci.value=DB.churchName||'';
+  let wrap=document.getElementById('activityLogWrap');
+  if(wrap&&wrap.style.display!=='none')renderActivityLog();
+  let el=document.getElementById('servantsList');if(!el)return;
+  let svs=getServants();
+  let sc=document.getElementById('svCount');if(sc)sc.textContent=svs.length;
+  if(!svs.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--txm);font-size:12px">لا يوجد خدام — أضف خادماً من الأعلى</div>';return;}
+  el.innerHTML='';
+  svs.forEach(u=>{
+    let cnt=DB.members.filter(m=>m.groupId===u.groupId).length;
+    let d=document.createElement('div');d.className='sv-card';
+    d.innerHTML=`<div style="display:flex;align-items:center;gap:8px">
+      <div class="sv-av">${initials(u.name)}</div>
+      <div><div style="font-size:12px;font-weight:700;color:var(--tx)">${u.name}</div>
+        <div style="font-size:10px;color:var(--txm)"><span class="sbadge">خادم</span> · ${cnt} عضو</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:5px">
+      <button class="btn bgr" style="font-size:11px;padding:5px 8px" onclick="editServantPw('${u.id}')">🔑</button>
+      <button class="btn br" style="font-size:11px;padding:5px 8px" onclick="removeServant('${u.id}')">🗑</button>
+    </div>`;
+    el.appendChild(d);
+  });
+}
+async function addServant(){
+  let name=document.getElementById('snName').value.trim();
+  let pw=document.getElementById('snPw').value.trim();
+  let msg=document.getElementById('addMsg');
+  if(!name){msg.style.color='var(--r)';msg.textContent='أدخل اسم الخادم';return;}
+  if(pw.length<3){msg.style.color='var(--r)';msg.textContent='كلمة السر على الأقل 3 أحرف';return;}
+  if(await passwordTakenByOtherServant(pw)){
+    msg.style.color='var(--r)';msg.textContent='كلمة السر دي مستخدمة بالفعل لخادم تاني، اختر كلمة سر مختلفة';return;
+  }
+  let id='sv_'+Date.now(),gid='g_'+Date.now();
+  let newUser={id,name,role:'servant',password:await hashPw(pw),groupId:gid};
+  DB.users.push(newUser);
+  logActivity('إضافة خادم جديد: '+name);
+  await saveDB({usersPatch:{upsert:[newUser]}});populateAllFilters();renderServants();
+  document.getElementById('snName').value='';document.getElementById('snPw').value='';
+  msg.style.color='var(--g)';msg.textContent='✓ تم إضافة الخادم: '+name;
+  setTimeout(()=>{msg.textContent='';},3000);
+}
+function editServantPw(id){
+  let u=DB.users.find(x=>x.id===id);if(!u)return;
+  let box=document.getElementById('memberModalBox');
+  box.innerHTML=`<div style="padding:4px">
+    <div style="font-size:14px;font-weight:700;color:var(--p);margin-bottom:12px">🔑 تغيير كلمة سر: ${u.name}</div>
+    <div class="field" style="margin-bottom:10px"><label>كلمة السر الجديدة</label>
+      <div class="pw-wrap"><input type="password" id="editPwIn" placeholder="كلمة السر الجديدة">
+      <button class="pw-show" onclick="let e=document.getElementById('editPwIn');e.type=e.type==='password'?'text':'password'">👁</button></div>
+    </div>
+    <div id="editPwErr" style="font-size:11px;color:var(--r);margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bg" style="flex:1;justify-content:center" onclick="(async()=>{
+        let pw=document.getElementById('editPwIn').value.trim();
+        let em=document.getElementById('editPwErr');
+        if(pw.length<3){em.textContent='كلمة السر قصيرة جداً';return;}
+        if(await passwordTakenByOtherServant(pw,'${id}')){
+          em.textContent='كلمة السر دي مستخدمة بالفعل لخادم تاني، اختر كلمة سر مختلفة';return;
+        }
+        let u=DB.users.find(x=>x.id==='${id}');
+        if(u){u.password=await hashPw(pw);await saveDB({usersPatch:{upsert:[u]}});document.getElementById('memberModal').classList.remove('on');renderServants();}
+      })()">✓ حفظ</button>
+      <button class="btn bgr" style="flex:1;justify-content:center" onclick="document.getElementById('memberModal').classList.remove('on')">إلغاء</button>
+    </div>
+  </div>`;
+  document.getElementById('memberModal').classList.add('on');
+}
+function removeServant(id){
+  let u=DB.users.find(x=>x.id===id);if(!u)return;
+  let cnt=DB.members.filter(m=>m.groupId===u.groupId).length;
+  showModal('حذف الخادم','حذف: '+u.name+'؟\n('+cnt+' عضو في مجموعته لن يُحذفوا)','حذف',async()=>{
+    DB.users=DB.users.filter(x=>x.id!==id);
+    logActivity('حذف خادم: '+u.name);
+    await saveDB({usersPatch:{remove:[id]}});renderServants();
+  });
+}
+async function changeAdminPw(){
+  let old=document.getElementById('adOld').value;
+  let nw=document.getElementById('adNew').value;
+  let msg=document.getElementById('pwMsg');
+  let admin=DB.users.find(u=>u.role==='admin');
+  if(!admin||!(await pwEquals(admin.password,old))){msg.style.color='var(--r)';msg.textContent='كلمة السر الحالية غلط';return;}
+  if(nw.length<3){msg.style.color='var(--r)';msg.textContent='كلمة السر الجديدة قصيرة جداً';return;}
+  admin.password=await hashPw(nw);await saveDB({usersPatch:{upsert:[admin]}});
+  msg.style.color='var(--g)';msg.textContent='✓ تم تغيير كلمة السر بنجاح';
+  document.getElementById('adOld').value='';document.getElementById('adNew').value='';
+}
+
+// ===== FILTERS =====
+
+function editMember(code){
+  let m=DB.members.find(x=>x.code===code);if(!m)return;
+  if(currentUser.role==='servant'&&m.groupId!==currentUser.groupId){setStatus('العضو ده مش في مجموعتك','warn');return;}
+  let box=document.getElementById('memberModalBox');
+  box.innerHTML=`<button onclick="document.getElementById('memberModal').classList.remove('on')" style="position:absolute;top:10px;left:10px;background:none;border:none;font-size:16px;cursor:pointer">✕</button>
+    <div style="font-size:14px;font-weight:700;color:var(--p);margin-bottom:12px">✎ تعديل: ${m.code}</div>
+    <div class="form-grid" style="margin-bottom:8px">
+      <div class="field"><label>الاسم *</label><input id="em_n" value="${m.name}"></div>
+      <div class="field"><label>التليفون</label><input id="em_p" value="${m.phone||''}"></div>
+      <div class="field"><label>السنة</label>
+        <select id="em_g">
+          <option value="">-- اختر --</option>
+          <optgroup label="إعدادي"><option${m.grade==='الأولى إعدادي'?' selected':''}>الأولى إعدادي</option><option${m.grade==='الثانية إعدادي'?' selected':''}>الثانية إعدادي</option><option${m.grade==='الثالثة إعدادي'?' selected':''}>الثالثة إعدادي</option></optgroup>
+          <optgroup label="ثانوي"><option${m.grade==='الأولى ثانوي'?' selected':''}>الأولى ثانوي</option><option${m.grade==='الثانية ثانوي'?' selected':''}>الثانية ثانوي</option><option${m.grade==='الثالثة ثانوي'?' selected':''}>الثالثة ثانوي</option></optgroup>
+          <optgroup label="جامعة"><option${m.grade==='الأولى جامعة'?' selected':''}>الأولى جامعة</option><option${m.grade==='الثانية جامعة'?' selected':''}>الثانية جامعة</option><option${m.grade==='الثالثة جامعة'?' selected':''}>الثالثة جامعة</option><option${m.grade==='الرابعة جامعة'?' selected':''}>الرابعة جامعة</option><option${m.grade==='الخامسة جامعة'?' selected':''}>الخامسة جامعة</option></optgroup>
+          <option${m.grade==='تخرج'?' selected':''}>تخرج</option><option${m.grade==='أخرى'?' selected':''}>أخرى</option>
+        </select></div>
+      <div class="field"><label>أب الاعتراف</label><input id="em_f" value="${m.father||''}"></div>
+      <div class="field"><label>العنوان</label><input id="em_a" value="${m.addr||''}"></div>
+      <div class="field"><label>تاريخ الميلاد</label><input type="date" id="em_d" value="${m.dob||''}"></div>
+      ${currentUser.role==='admin'?`<div class="field"><label>المجموعة / الخادم</label>
+        <select id="em_grp">${getServants().map(s=>`<option value="${s.groupId}"${s.groupId===m.groupId?' selected':''}>${s.name}</option>`).join('')}</select>
+      </div>`:''}
+    </div>
+    <div class="field" style="margin-bottom:10px"><label>ملاحظات</label><textarea id="em_nt" style="min-height:40px">${m.notes||''}</textarea></div>
+    <div id="em_err" style="font-size:11px;color:var(--r);margin-bottom:6px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bg" style="flex:1;justify-content:center" onclick="saveEditMember('${m.code}')">✓ حفظ</button>
+      <button class="btn bgr" style="flex:1;justify-content:center" onclick="document.getElementById('memberModal').classList.remove('on')">إلغاء</button>
+    </div>`;
+  document.getElementById('memberModal').classList.add('on');
+}
+async function saveEditMember(code){
+  let m=DB.members.find(x=>x.code===code);if(!m)return;
+  if(currentUser.role==='servant'&&m.groupId!==currentUser.groupId){setStatus('غير مسموح بتعديل هذا العضو','warn');return;}
+  let name=document.getElementById('em_n').value.trim();
+  if(!name){document.getElementById('em_err').textContent='الاسم مطلوب';return;}
+  m.name=name;m.phone=document.getElementById('em_p').value.trim();
+  m.grade=document.getElementById('em_g').value.trim();m.father=document.getElementById('em_f').value.trim();
+  m.addr=document.getElementById('em_a').value.trim();m.dob=document.getElementById('em_d').value;
+  m.notes=document.getElementById('em_nt').value.trim();
+  if(currentUser.role==='admin'){
+    let grpSel=document.getElementById('em_grp');
+    if(grpSel&&grpSel.value&&grpSel.value!==m.groupId){
+      logActivity('نقل عضو: '+m.name+' ('+m.code+') من '+getGroupName(m.groupId)+' إلى '+getGroupName(grpSel.value));
+      m.groupId=grpSel.value;
+    }
+  }
+  logActivity('تعديل بيانات عضو: '+m.name+' ('+m.code+')');
+  await saveDB({membersPatch:{upsert:[m]}});document.getElementById('memberModal').classList.remove('on');
+  // Refresh whichever page is currently showing
+  let onPage=document.querySelector('.page.on');
+  let pid=onPage?onPage.id:'';
+  if(pid==='page-members')renderMembers();
+  else if(pid==='page-search')doSearch();
+  else renderCurrentPage();
+  setStatus('تم تعديل: '+name,'ok');
+}
+function deleteMember(code){
+  if(currentUser.role!=='admin'){setStatus('الحذف لمسئول النظام فقط','warn');return;}
+  let m=DB.members.find(x=>x.code===code);if(!m)return;
+  showModal('حذف عضو','حذف: '+m.name+' بشكل نهائي؟','حذف',async()=>{
+    DB.members=DB.members.filter(x=>x.code!==code);
+    logActivity('حذف عضو: '+m.name+' ('+m.code+')');
+    await saveDB({membersPatch:{remove:[code]}});renderMembers();setStatus('تم حذف: '+m.name,'ok');
+  });
+}
+function clearAllData(){
+  showModal('تحذير','مسح كل بيانات الحضور والتقارير نهائياً؟','نعم امسح',async()=>{
+    DB.records=[];DB.todayAtt={};DB.todayDate='';DB.attendance={};DB.history=[];delete DB.closedDate;
+    logActivity('⚠ مسح كل بيانات الحضور والتقارير');
+    await saveDB({skipArrMerge:true,skipAttMerge:true});showModal('تم','تم مسح كل بيانات الحضور بنجاح','حسناً',null,'ok');renderCurrentPage();
+  });
+}
+
+// ----- Backup / Restore -----
+function exportBackup(){
+  let b=new Blob([JSON.stringify(DB,null,2)],{type:'application/json;charset=utf-8'});
+  let a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download='نسخة_احتياطية_'+todayKey()+'.json';a.click();
+}
+function importBackup(){
+  let file=document.getElementById('bkFile').files[0];
+  let st=document.getElementById('bkStatus');
+  if(!file){st.style.color='var(--r)';st.textContent='اختر ملف JSON أولاً';return;}
+  let reader=new FileReader();
+  reader.onload=e=>{
+    let parsed;
+    try{parsed=JSON.parse(e.target.result);}catch(err){st.style.color='var(--r)';st.textContent='ملف غير صالح';return;}
+    if(!parsed||!parsed.users||!parsed.members){st.style.color='var(--r)';st.textContent='الملف لا يحتوي على بيانات نظام صحيحة';return;}
+    showModal('استعادة نسخة احتياطية','سيتم استبدال كل البيانات الحالية (الأعضاء، الخدام، سجلات الحضور) ببيانات هذا الملف نهائياً. هل أنت متأكد؟','نعم، استعادة',async()=>{
+      DB=fixDB(parsed);
+      logActivity('⚠ استعادة نسخة احتياطية كاملة (استُبدلت كل البيانات)');
+      await saveDB({skipArrMerge:true,skipAttMerge:true});
+      st.style.color='var(--g)';st.textContent='✓ تم استعادة النسخة الاحتياطية بنجاح';
+      populateAllFilters();buildUI();
+      document.getElementById('bkFile').value='';
+    });
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function downloadTemplate(){
+  let csv='الاسم,التليفون,السنة,المجموعة,العنوان,أب الاعتراف,تاريخ الميلاد,ملاحظات\n';
+  csv+='مينا سامي ميخائيل,01012345678,الثانية اعدادي,خادم 1,شارع الكنيسة,القس مرقس,2001-03-15,\n';
+  let b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  let a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='نموذج_الأعضاء.csv';a.click();
+}
+function importExcel(){
+  let file=document.getElementById('xlFile').files[0];
+  let st=document.getElementById('xlStatus'),prev=document.getElementById('xlPreview');
+  if(!file){st.style.color='var(--r)';st.textContent='اختر ملفاً أولاً';return;}
+  let ext=file.name.split('.').pop().toLowerCase();
+  let reader=new FileReader();
+  if(ext==='csv'){
+    reader.onload=e=>parseImport(e.target.result,st,prev);
+    reader.readAsText(file,'UTF-8');
+  } else {
+    reader.onload=e=>{
+      let text=new TextDecoder('utf-8').decode(new Uint8Array(e.target.result));
+      if(text.includes(','))parseImport(text,st,prev);
+      else{st.style.color='var(--o)';st.textContent='احفظ الملف كـ CSV من Excel وحاول تاني';}
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+function parseImport(text,st,prev){
+  let sep=text.includes('\t')?'\t':',';
+  let lines=text.replace(/\r/g,'').split('\n').filter(l=>l.trim());
+  if(lines.length<2){st.style.color='var(--r)';st.textContent='الملف فارغ أو ليس له رأس';return;}
+  let headers=lines[0].split(sep).map(c=>c.trim().replace(/^"|"$/g,'').toLowerCase());
+  let hasServantCol=headers.includes('servantname')||headers.includes('servant')||headers.includes('الخادم');
+  let rows=lines.slice(1).map(l=>l.split(sep).map(c=>c.trim().replace(/^"|"$/g,'')));
+  let valid=[],rejected=[];
+  rows.filter(r=>r[0]&&r[0].trim()).forEach(r=>{
+    let servantRaw=r[3]?r[3].trim():'';
+    let servant=null;
+    if(currentUser.role==='servant'){
+      servant=currentUser;
+    } else if(servantRaw){
+      // مطابقة دقيقة (مع تجاهل المسافات الزيادة فقط)
+      servant=DB.users.find(u=>u.role==='servant'&&u.name.trim().replace(/\s+/g,' ')===servantRaw.replace(/\s+/g,' '));
+      if(!servant){rejected.push({name:r[0],servantName:servantRaw});return;}
+    }
+    valid.push({
+      name:r[0]||'',phone:r[1]||'',grade:r[2]||'',
+      gid:servant?servant.groupId:'',
+      servantDisplayName:servant?servant.name:'—',
+      addr:r[4]||'',father:r[5]||'',dob:r[6]||'',notes:r[7]||''
+    });
+  });
+  if(!valid.length&&!rejected.length){st.style.color='var(--r)';st.textContent='لا توجد بيانات صالحة';return;}
+  let tbl='<div class="tbl-wrap" style="max-height:160px;margin:8px 0"><table><thead><tr><th>الاسم</th><th>التليفون</th><th>السنة</th><th>الخادم</th></tr></thead><tbody>';
+  valid.slice(0,5).forEach(m=>{tbl+='<tr><td>'+m.name+'</td><td>'+m.phone+'</td><td>'+m.grade+'</td><td>'+m.servantDisplayName+'</td></tr>';});
+  if(valid.length>5)tbl+='<tr><td colspan="4" style="text-align:center;color:var(--txm)">... و '+(valid.length-5)+' آخرين</td></tr>';
+  tbl+='</tbody></table></div>';
+  if(rejected.length){
+    tbl+='<div style="background:var(--rl);color:var(--r);padding:8px 10px;border-radius:7px;font-size:11px;margin-bottom:8px">⚠ تم رفض '+rejected.length+' عضو لأن اسم الخادم غير موجود في النظام:<br>';
+    tbl+=rejected.slice(0,5).map(r=>'• '+r.name+' (كتبت: "'+r.servantName+'")').join('<br>');
+    if(rejected.length>5)tbl+='<br>... و '+(rejected.length-5)+' آخرين';
+    tbl+='</div>';
+  }
+  if(valid.length){
+    tbl+='<div style="display:flex;gap:7px"><button class="btn bg" onclick="confirmImport()">✓ استيراد '+valid.length+' عضو</button><button class="btn bgr" onclick="cancelImport()">إلغاء</button></div>';
+  } else {
+    tbl+='<div style="display:flex;gap:7px"><button class="btn bgr" onclick="cancelImport()">إغلاق</button></div>';
+  }
+  st.style.color=rejected.length?(valid.length?'var(--o)':'var(--r)'):'var(--g)';
+  st.textContent=valid.length?'تم قراءة '+valid.length+' عضو'+(rejected.length?' — رُفض '+rejected.length+' بسبب اسم خادم غلط':''):'كل الأعضاء رُفضوا بسبب أسماء خدام غير موجودة';
+  prev.innerHTML=tbl;prev._data=valid;
+}
+function cancelImport(){
+  let prev=document.getElementById('xlPreview');
+  if(prev)prev.innerHTML='';
+  let fi=document.getElementById('xlFile');
+  if(fi)fi.value='';
+}
+async function confirmImport(){
+  let prev=document.getElementById('xlPreview');
+  let data=prev._data;if(!data||!data.length)return;
+  let added=0,skipped=0,pending=[];
+  data.forEach(m=>{
+    if(!m.name){skipped++;return;}
+    if(DB.members.find(x=>(x.name===m.name&&x.phone===m.phone)||x.name===m.name)){skipped++;return;}
+    let gid=currentUser.role==='servant'?currentUser.groupId:m.gid;
+    pending.push({name:m.name,phone:m.phone,grade:m.grade,groupId:gid,addr:m.addr,dob:m.dob,father:m.father,notes:m.notes});
+    added++;
+  });
+  await saveDB({pendingNewMembers:pending});populateAllFilters();
+  if(added>0)logActivity('استيراد CSV: '+added+' عضو جديد'+(skipped?' (تجاوز '+skipped+' مكرر)':''));
+  prev.innerHTML='<div class="status-bar ok">✓ تم استيراد '+added+' عضو'+(skipped?' (تجاوز '+skipped+' مكرر)':'')+'</div>';
+  document.getElementById('xlFile').value='';
+  setStatus('تم استيراد '+added+' عضو','ok');
+}
+function populateAllFilters(){
+  let grades=getGrades();
+  ['attGradeF','memGradeF'].forEach(id=>{
+    let sel=document.getElementById(id);if(!sel)return;
+    let cur=sel.value;while(sel.options.length>1)sel.remove(1);
+    grades.forEach(g=>{let o=document.createElement('option');o.value=g;o.textContent=g;sel.appendChild(o);});
+    sel.value=cur;
+  });
+  // Also populate memGroupF
+  let mgf=document.getElementById('memGroupF');
+  if(mgf){let cur=mgf.value;while(mgf.options.length>1)mgf.remove(1);
+    getServants().forEach(s=>{let o=document.createElement('option');o.value=s.groupId;o.textContent=s.name;mgf.appendChild(o);});
+    mgf.value=cur;}
+  populateGroupSelect();
+}
+
+// ===== INIT =====
+function hideLoading(){
+  let lo=document.getElementById('loadingOverlay');
+  if(lo){lo.classList.add('hidden');lo.style.display='none';}
+}
+window.addEventListener('load',async()=>{
+  updateOfflineBanner();
+  try{
+    document.getElementById('loadingMsg').textContent='جاري التحميل...';
+    await loadDB();
+  }catch(e){
+    try{DB=fixDB(JSON.parse(JSON.stringify(DEF)));lsave();}catch(e2){}
+  } finally {
+    hideLoading();
+    try{
+      let sid=sessionStorage.getItem('cu_id'),spw=sessionStorage.getItem('cu_pw');
+      if(sid&&spw&&DB){
+        let u=DB.users.find(x=>x.id===sid);
+        if(u){_loginRole=u.role;document.getElementById('pwInput').value=spw;await doLogin();setTimeout(syncCloud,1000);return;}
+      }
+    }catch(e){}
+    document.getElementById('loginScreen').classList.remove('hidden');
+    setTimeout(syncCloud,1000);
+  }
+});
+</script>
+</body>
+</html>
